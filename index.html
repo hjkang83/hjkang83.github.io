@@ -3,30 +3,350 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>희준의 홈페이지</title>
+    <title>Home</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Apple SD Gothic Neo', sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            background-color: #f5f5f5;
-            color: #333;
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: #141414;
+            --bg-card-hover: #1a1a1a;
+            --text-primary: #e8e6e3;
+            --text-secondary: #8a8a8a;
+            --accent: #c9a96e;
+            --accent-dim: rgba(201, 169, 110, 0.15);
+            --border: #2a2a2a;
+            --font-display: 'Playfair Display', serif;
+            --font-body: 'Noto Sans KR', sans-serif;
         }
-        h1 { color: #2c3e50; }
-        .intro {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* --- Noise Overlay --- */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* --- Navigation --- */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            padding: 24px 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(to bottom, var(--bg-primary) 60%, transparent);
+        }
+
+        .nav-logo {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            font-weight: 900;
+            color: var(--accent);
+            text-decoration: none;
+            letter-spacing: 0.02em;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 36px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 400;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            transition: color 0.3s;
+            position: relative;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: var(--accent);
+            transition: width 0.3s;
+        }
+
+        .nav-links a:hover { color: var(--text-primary); }
+        .nav-links a:hover::after { width: 100%; }
+        .nav-links a.active { color: var(--accent); }
+        .nav-links a.active::after { width: 100%; }
+
+        /* --- Hero --- */
+        .hero {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 24px;
+            position: relative;
+        }
+
+        .hero-glow {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--accent-dim) 0%, transparent 70%);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 6s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        .hero-greeting {
+            font-size: 0.9rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.25em;
+            margin-bottom: 24px;
+            position: relative;
+            animation: fadeUp 0.8s ease-out;
+        }
+
+        .hero-name {
+            font-family: var(--font-display);
+            font-size: clamp(3rem, 8vw, 6.5rem);
+            font-weight: 900;
+            line-height: 1.05;
+            margin-bottom: 20px;
+            position: relative;
+            animation: fadeUp 0.8s ease-out 0.15s backwards;
+        }
+
+        .hero-tagline {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+            line-height: 1.7;
+            max-width: 520px;
+            position: relative;
+            animation: fadeUp 0.8s ease-out 0.3s backwards;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 48px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            animation: fadeUp 0.8s ease-out 0.6s backwards;
+        }
+
+        .scroll-indicator .line {
+            width: 1px;
+            height: 40px;
+            background: linear-gradient(to bottom, var(--accent), transparent);
+            animation: scrollLine 2s ease-in-out infinite;
+        }
+
+        @keyframes scrollLine {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        /* --- Cards Section --- */
+        .cards-section {
+            padding: 80px 48px 120px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .section-label {
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            margin-bottom: 40px;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 48px 40px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+
+        .card:hover {
+            background: var(--bg-card-hover);
+            border-color: #3a3a3a;
+            transform: translateY(-4px);
+        }
+
+        .card:hover::before { opacity: 1; }
+
+        .card-number {
+            font-family: var(--font-display);
+            font-size: 3rem;
+            font-weight: 900;
+            color: var(--accent-dim);
+            line-height: 1;
+            margin-bottom: 20px;
+            transition: color 0.4s;
+        }
+
+        .card:hover .card-number { color: var(--accent); }
+
+        .card-title {
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .card-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.7;
+            font-weight: 300;
+        }
+
+        .card-arrow {
+            margin-top: 24px;
+            font-size: 0.8rem;
+            color: var(--accent);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all 0.4s;
+        }
+
+        .card:hover .card-arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* --- Footer --- */
+        footer {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            border-top: 1px solid var(--border);
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 768px) {
+            nav { padding: 16px 24px; }
+            .nav-links { gap: 20px; }
+            .nav-links a { font-size: 0.75rem; }
+            .cards-section { padding: 60px 24px 80px; }
+            .card-grid { grid-template-columns: 1fr; }
+            .card { padding: 36px 28px; }
         }
     </style>
 </head>
 <body>
-    <div class="intro">
-        <h1>안녕하세요!</h1>
-        <p>이곳은 강희준의 개인 홈페이지입니다.</p>
-        <p>GitHub Pages로 만든 첫 번째 웹사이트예요.</p>
-    </div>
+
+    <nav>
+        <a href="index.html" class="nav-logo">HJ.</a>
+        <ul class="nav-links">
+            <li><a href="index.html" class="active">Home</a></li>
+            <li><a href="introduction.html">Introduction</a></li>
+            <li><a href="career.html">Career</a></li>
+        </ul>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-glow"></div>
+        <p class="hero-greeting">Welcome to my page</p>
+        <h1 class="hero-name">홍길동</h1>
+        <p class="hero-tagline">
+            네트워크 엔지니어 · KAIST MBA<br>
+            기술과 경영의 교차점에서 새로운 가치를 만듭니다.
+        </p>
+        <div class="scroll-indicator">
+            <span>Explore</span>
+            <div class="line"></div>
+        </div>
+    </section>
+
+    <section class="cards-section">
+        <p class="section-label">Pages</p>
+        <div class="card-grid">
+            <a href="introduction.html" class="card">
+                <div class="card-number">01</div>
+                <h2 class="card-title">Introduction</h2>
+                <p class="card-desc">저를 소개합니다. 어떤 사람인지, 어떤 관심사를 가지고 있는지 알아보세요.</p>
+                <p class="card-arrow">자세히 보기 →</p>
+            </a>
+            <a href="career.html" class="card">
+                <div class="card-number">02</div>
+                <h2 class="card-title">Career</h2>
+                <p class="card-desc">지금까지 걸어온 커리어와 주요 프로젝트, 그리고 앞으로의 방향을 공유합니다.</p>
+                <p class="card-arrow">자세히 보기 →</p>
+            </a>
+        </div>
+    </section>
+
+    <footer>
+        &copy; 2026 — Built with GitHub Pages
+    </footer>
+
 </body>
 </html>

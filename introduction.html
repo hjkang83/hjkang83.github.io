@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Introduction</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: #141414;
+            --bg-card-hover: #1a1a1a;
+            --text-primary: #e8e6e3;
+            --text-secondary: #8a8a8a;
+            --accent: #c9a96e;
+            --accent-dim: rgba(201, 169, 110, 0.15);
+            --border: #2a2a2a;
+            --font-display: 'Playfair Display', serif;
+            --font-body: 'Noto Sans KR', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* --- Navigation --- */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            padding: 24px 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(to bottom, var(--bg-primary) 60%, transparent);
+        }
+
+        .nav-logo {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            font-weight: 900;
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 36px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 400;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            transition: color 0.3s;
+            position: relative;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: var(--accent);
+            transition: width 0.3s;
+        }
+
+        .nav-links a:hover { color: var(--text-primary); }
+        .nav-links a:hover::after { width: 100%; }
+        .nav-links a.active { color: var(--accent); }
+        .nav-links a.active::after { width: 100%; }
+
+        /* --- Page Header --- */
+        .page-header {
+            padding: 160px 48px 80px;
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .page-header::before {
+            content: 'INTRO';
+            position: absolute;
+            top: 100px;
+            right: 48px;
+            font-family: var(--font-display);
+            font-size: clamp(5rem, 12vw, 10rem);
+            font-weight: 900;
+            color: rgba(201, 169, 110, 0.04);
+            line-height: 1;
+            pointer-events: none;
+        }
+
+        .page-label {
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.25em;
+            margin-bottom: 20px;
+            animation: fadeUp 0.6s ease-out;
+        }
+
+        .page-title {
+            font-family: var(--font-display);
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 900;
+            line-height: 1.1;
+            animation: fadeUp 0.6s ease-out 0.1s backwards;
+        }
+
+        .page-subtitle {
+            margin-top: 16px;
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+            line-height: 1.7;
+            max-width: 560px;
+            animation: fadeUp 0.6s ease-out 0.2s backwards;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Content --- */
+        .content {
+            padding: 0 48px 120px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .divider {
+            width: 60px;
+            height: 1px;
+            background: var(--accent);
+            margin-bottom: 64px;
+        }
+
+        /* --- Profile Section --- */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 60px;
+            margin-bottom: 80px;
+            animation: fadeUp 0.6s ease-out 0.3s backwards;
+        }
+
+        .profile-photo {
+            width: 280px;
+            height: 340px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-photo::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+        }
+
+        .profile-photo-placeholder {
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .profile-photo-placeholder .icon {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+
+        .profile-info h3 {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            margin-bottom: 8px;
+        }
+
+        .profile-info .role {
+            color: var(--accent);
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            margin-bottom: 24px;
+        }
+
+        .profile-info p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.85;
+            font-weight: 300;
+            margin-bottom: 16px;
+        }
+
+        /* --- Info Table --- */
+        .info-table {
+            margin-top: 32px;
+            border-top: 1px solid var(--border);
+        }
+
+        .info-row {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            padding: 16px 0;
+        }
+
+        .info-label {
+            width: 120px;
+            flex-shrink: 0;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            padding-top: 2px;
+        }
+
+        .info-value {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
+        /* --- Interests --- */
+        .interests-section {
+            animation: fadeUp 0.6s ease-out 0.4s backwards;
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 32px;
+        }
+
+        .tag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .tag {
+            padding: 10px 22px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            transition: all 0.3s;
+        }
+
+        .tag:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        /* --- Footer --- */
+        footer {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            border-top: 1px solid var(--border);
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 768px) {
+            nav { padding: 16px 24px; }
+            .nav-links { gap: 20px; }
+            .nav-links a { font-size: 0.75rem; }
+            .page-header { padding: 140px 24px 60px; }
+            .page-header::before { display: none; }
+            .content { padding: 0 24px 80px; }
+            .profile-grid {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+            .profile-photo {
+                width: 100%;
+                height: 240px;
+            }
+            .info-row { flex-direction: column; gap: 4px; }
+            .info-label { width: auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="index.html" class="nav-logo">HJ.</a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="introduction.html" class="active">Introduction</a></li>
+            <li><a href="career.html">Career</a></li>
+        </ul>
+    </nav>
+
+    <section class="page-header">
+        <p class="page-label">01 — About Me</p>
+        <h1 class="page-title">Introduction</h1>
+        <p class="page-subtitle">
+            기술의 가능성을 믿고, 더 나은 방식을 끊임없이 고민하는 사람입니다.
+        </p>
+    </section>
+
+    <section class="content">
+        <div class="divider"></div>
+
+        <div class="profile-grid">
+            <div class="profile-photo">
+                <div class="profile-photo-placeholder">
+                    <span class="icon">📷</span>
+                    프로필 사진<br>이미지를 넣어주세요
+                </div>
+            </div>
+
+            <div class="profile-info">
+                <h3>홍길동</h3>
+                <p class="role">Network Engineer · MBA Candidate</p>
+
+                <p>
+                    안녕하세요. 저는 통신 업계에서 15년 이상 네트워크 엔지니어로 일하고 있습니다.
+                    현재는 KAIST MBA 정보경영프로그램에서 기술 경영을 공부하며,
+                    AI와 네트워크 기술의 접점에서 새로운 가치를 찾고 있습니다.
+                </p>
+                <p>
+                    현업에서는 Core Network 운용과 AX(AI Transformation) 프로젝트에 참여하고 있으며,
+                    실무 경험과 경영 지식을 결합해 조직의 디지털 전환을 이끌어가고 싶습니다.
+                </p>
+
+                <div class="info-table">
+                    <div class="info-row">
+                        <span class="info-label">Education</span>
+                        <span class="info-value">KAIST MBA (정보경영프로그램, 2024~)</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Location</span>
+                        <span class="info-value">Seoul, South Korea</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Email</span>
+                        <span class="info-value">your.email@example.com</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">GitHub</span>
+                        <span class="info-value">github.com/your-id</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="interests-section">
+            <h2 class="section-title">Interests</h2>
+            <div class="tag-cloud">
+                <span class="tag">5G/LTE Core Network</span>
+                <span class="tag">AI Transformation</span>
+                <span class="tag">Reinforcement Learning</span>
+                <span class="tag">LEO Satellite</span>
+                <span class="tag">Network Automation</span>
+                <span class="tag">Tech Management</span>
+                <span class="tag">Digital Innovation</span>
+                <span class="tag">Telecom Strategy</span>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        &copy; 2026 — Built with GitHub Pages
+    </footer>
+
+</body>
+</html>
