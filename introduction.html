@@ -170,15 +170,9 @@
 
         .profile-photo {
             width: 280px;
-            height: 340px;
-            background: var(--bg-card);
+            height: 370px;
             border: 1px solid var(--border);
             border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-secondary);
-            font-size: 0.8rem;
             position: relative;
             overflow: hidden;
         }
@@ -191,18 +185,15 @@
             right: 0;
             height: 3px;
             background: linear-gradient(90deg, var(--accent), transparent);
+            z-index: 2;
         }
 
-        .profile-photo-placeholder {
-            text-align: center;
-            line-height: 1.6;
-        }
-
-        .profile-photo-placeholder .icon {
-            font-size: 3rem;
+        .profile-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top;
             display: block;
-            margin-bottom: 12px;
-            opacity: 0.4;
         }
 
         .profile-info h3 {
@@ -312,7 +303,7 @@
             }
             .profile-photo {
                 width: 100%;
-                height: 240px;
+                height: 300px;
             }
             .info-row { flex-direction: column; gap: 4px; }
             .info-label { width: auto; }
@@ -343,10 +334,7 @@
 
         <div class="profile-grid">
             <div class="profile-photo">
-                <div class="profile-photo-placeholder">
-                    <span class="icon">📷</span>
-                    프로필 사진<br>이미지를 넣어주세요
-                </div>
+                <img src="IMG_5956.jpg" alt="강희준 프로필 사진">
             </div>
 
             <div class="profile-info">
@@ -380,7 +368,7 @@
                         <span class="info-label">GitHub</span>
                         <span class="info-value">github.com/hjkang83</span>
                     </div>
-                     <div class="info-row">
+                    <div class="info-row">
                         <span class="info-label">Homepage</span>
                         <span class="info-value">hjkang83.github.io</span>
                     </div>
