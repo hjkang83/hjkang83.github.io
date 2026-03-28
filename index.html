@@ -280,6 +280,182 @@
             transform: translateX(0);
         }
 
+        /* --- Notice Section --- */
+        .notice-section {
+            padding: 0 48px 80px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .notice-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .notice-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+            padding: 20px 28px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.3s;
+        }
+
+        .notice-item:last-child { border-bottom: none; }
+        .notice-item:hover { background: var(--bg-card); }
+
+        .notice-badge {
+            flex-shrink: 0;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--bg-primary);
+            background: var(--accent);
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-top: 2px;
+        }
+
+        .notice-date {
+            flex-shrink: 0;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+            min-width: 60px;
+            margin-top: 2px;
+        }
+
+        .notice-text {
+            font-size: 0.92rem;
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-weight: 300;
+        }
+
+        /* --- Guestbook Section --- */
+        .guestbook-section {
+            padding: 0 48px 120px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .guestbook-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            font-weight: 300;
+            margin-bottom: 28px;
+        }
+
+        .guestbook-form {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 36px;
+            flex-wrap: wrap;
+        }
+
+        .guestbook-form input {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 0.88rem;
+            font-weight: 300;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .guestbook-form input:focus {
+            border-color: var(--accent);
+        }
+
+        .guestbook-form input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        #guestName { width: 140px; }
+        #guestMessage { flex: 1; min-width: 200px; }
+
+        .guestbook-form button {
+            background: transparent;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 12px 24px;
+            color: var(--accent);
+            font-family: var(--font-body);
+            font-size: 0.82rem;
+            font-weight: 400;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .guestbook-form button:hover {
+            background: var(--accent);
+            color: var(--bg-primary);
+        }
+
+        .guestbook-entries {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .guestbook-entries:empty::after {
+            content: '아직 방명록이 없습니다. 첫 번째 메시지를 남겨보세요!';
+            display: block;
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            font-weight: 300;
+        }
+
+        .guestbook-entry {
+            display: flex;
+            align-items: baseline;
+            gap: 16px;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            animation: fadeUp 0.4s ease-out;
+        }
+
+        .guestbook-entry:last-child { border-bottom: none; }
+
+        .entry-name {
+            flex-shrink: 0;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--accent);
+            min-width: 70px;
+        }
+
+        .entry-message {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            font-weight: 300;
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        .entry-time {
+            flex-shrink: 0;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
         /* --- Footer --- */
         footer {
             text-align: center;
@@ -298,6 +474,12 @@
             .cards-section { padding: 60px 24px 80px; }
             .card-grid { grid-template-columns: 1fr; }
             .card { padding: 36px 28px; }
+            .notice-section { padding: 0 24px 60px; }
+            .guestbook-section { padding: 0 24px 80px; }
+            #guestName { width: 100%; }
+            #guestMessage { width: 100%; }
+            .guestbook-form button { width: 100%; }
+            .entry-time { display: none; }
         }
     </style>
 </head>
@@ -344,9 +526,107 @@
         </div>
     </section>
 
+    <section class="notice-section">
+        <p class="section-label">Notice</p>
+        <div class="notice-list">
+            <div class="notice-item">
+                <span class="notice-badge">New</span>
+                <span class="notice-date">2026.03</span>
+                <p class="notice-text">KAIST IMMS 과정 중에 있습니다. 관심 있으신 분들은 편하게 연락 주세요.</p>
+            </div>
+            <div class="notice-item">
+                <span class="notice-badge">업무</span>
+                <span class="notice-date">2025.01</span>
+                <p class="notice-text">LG유플러스 팀장으로 이동 후 AI 기반 네트워크 자동화 프로젝트를 추진 중입니다.</p>
+            </div>
+            <div class="notice-item">
+                <span class="notice-badge">연구</span>
+                <span class="notice-date">2024.09</span>
+                <p class="notice-text">LEO 위성통신 및 모바일 코어망 AI 적용 연구를 시작했습니다.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="guestbook-section">
+        <p class="section-label">Guestbook</p>
+        <p class="guestbook-subtitle">방문해주셔서 감사합니다. 한 줄 메시지를 남겨주세요 :)</p>
+        <form class="guestbook-form" id="guestbookForm">
+            <input type="text" id="guestName" placeholder="이름 (선택)" maxlength="20" autocomplete="off">
+            <input type="text" id="guestMessage" placeholder="한 줄 메시지를 남겨주세요..." maxlength="100" required autocomplete="off">
+            <button type="submit">남기기</button>
+        </form>
+        <div class="guestbook-entries" id="guestbookEntries"></div>
+    </section>
+
     <footer>
         &copy; 2026 — Built with GitHub Pages
     </footer>
+
+    <script>
+        const STORAGE_KEY = 'hjkang83_guestbook';
+
+        function loadEntries() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+            } catch {
+                return [];
+            }
+        }
+
+        function saveEntries(entries) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+        }
+
+        function formatDate(isoString) {
+            const d = new Date(isoString);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}.${mm}.${dd}`;
+        }
+
+        function renderEntries() {
+            const container = document.getElementById('guestbookEntries');
+            const entries = loadEntries();
+            container.innerHTML = '';
+            entries.slice().reverse().forEach(entry => {
+                const el = document.createElement('div');
+                el.className = 'guestbook-entry';
+                el.innerHTML = `
+                    <span class="entry-name">${escapeHtml(entry.name)}</span>
+                    <span class="entry-message">${escapeHtml(entry.message)}</span>
+                    <span class="entry-time">${formatDate(entry.date)}</span>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        document.getElementById('guestbookForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('guestName').value.trim() || '익명';
+            const message = document.getElementById('guestMessage').value.trim();
+            if (!message) return;
+
+            const entries = loadEntries();
+            entries.push({ name, message, date: new Date().toISOString() });
+            saveEntries(entries);
+
+            document.getElementById('guestName').value = '';
+            document.getElementById('guestMessage').value = '';
+            renderEntries();
+        });
+
+        renderEntries();
+    </script>
 
 </body>
 </html>
