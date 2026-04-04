@@ -206,6 +206,10 @@
             gap: 24px;
         }
 
+        .card-grid .card:last-child:nth-child(odd) {
+            grid-column: 1 / -1;
+        }
+
         .card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -491,6 +495,7 @@
             <li><a href="index.html" class="active">Home</a></li>
             <li><a href="introduction.html">Introduction</a></li>
             <li><a href="career.html">Career</a></li>
+            <li><a href="claude.html">Claude</a></li>
         </ul>
     </nav>
 
@@ -521,6 +526,12 @@
                 <div class="card-number">02</div>
                 <h2 class="card-title">Career</h2>
                 <p class="card-desc">지금까지 걸어온 커리어와 주요 프로젝트, 그리고 앞으로의 방향을 공유합니다.</p>
+                <p class="card-arrow">자세히 보기 →</p>
+            </a>
+            <a href="claude.html" class="card">
+                <div class="card-number">03</div>
+                <h2 class="card-title">Claude Features</h2>
+                <p class="card-desc">Claude Code, Skills, Projects, Dispatch, Computer Use, Artifacts 등 주요 기능과 실제 활용 사례를 소개합니다.</p>
                 <p class="card-arrow">자세히 보기 →</p>
             </a>
         </div>
