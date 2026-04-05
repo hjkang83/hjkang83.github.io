@@ -1,9 +1,23 @@
 """텍스트 → 음성 변환 모듈 - 페르소나별 목소리 적용."""
 
 import asyncio
+import re
 from io import BytesIO
 
 import edge_tts
+
+
+def _clean_markdown(text):
+    """마크다운 기호를 제거하여 TTS가 자연스럽게 읽도록 한다."""
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)  # **bold**
+    text = re.sub(r"\*(.+?)\*", r"\1", text)       # *italic*
+    text = re.sub(r"__(.+?)__", r"\1", text)       # __bold__
+    text = re.sub(r"_(.+?)_", r"\1", text)         # _italic_
+    text = re.sub(r"#+\s*", "", text)              # ### 제목
+    text = re.sub(r"\[(.+?)\]\(.+?\)", r"\1", text)  # [링크](url)
+    text = re.sub(r"[`~]", "", text)               # 백틱, 틸드
+    text = re.sub(r"^\s*[-*]\s+", "", text, flags=re.MULTILINE)  # 목록 기호
+    return text.strip()
 
 # 페르소나별 음성 설정
 # 한국어 Edge TTS 음성 목록:
@@ -62,6 +76,7 @@ def text_to_speech(text, persona="adult_male"):
         mp3 바이너리 데이터가 담긴 BytesIO 객체
     """
     config = PERSONA_VOICE.get(persona, DEFAULT_VOICE)
+    text = _clean_markdown(text)
 
     try:
         loop = asyncio.get_event_loop()
