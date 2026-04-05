@@ -1,4 +1,4 @@
-"""Step 6: 방문 기록 저장/불러오기 모듈."""
+"""방문 기록 저장/불러오기 모듈 - 전세계 장소 대응."""
 
 import json
 import os
@@ -12,12 +12,10 @@ PHOTOS_DIR = os.path.join(BASE_DIR, "photos")
 
 
 def _ensure_dirs():
-    """user_data 디렉토리 구조를 보장한다."""
     os.makedirs(PHOTOS_DIR, exist_ok=True)
 
 
 def _load_json():
-    """records.json을 로드한다. 없으면 빈 구조를 생성한다."""
     _ensure_dirs()
     if not os.path.exists(RECORDS_PATH):
         return {"records": []}
@@ -26,14 +24,12 @@ def _load_json():
 
 
 def _save_json(data):
-    """records.json에 저장한다."""
     _ensure_dirs()
     with open(RECORDS_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def _generate_record_id(data):
-    """rec_{날짜}_{3자리순번} 형식의 ID를 생성한다."""
     today = datetime.now().strftime("%Y%m%d")
     prefix = f"rec_{today}_"
     existing = [r["id"] for r in data["records"] if r["id"].startswith(prefix)]
@@ -46,8 +42,8 @@ def save_record(photo, place_info, persona, explanation):
 
     Args:
         photo: PIL Image 객체
-        place_info: place_matcher에서 반환된 장소 dict
-        persona: 페르소나 키 ("child" | "general" | "expert")
+        place_info: {"name": str, "location": str, "category": str, "lat": float, "lng": float}
+        persona: 페르소나 키
         explanation: AI가 생성한 설명 텍스트
 
     Returns:
@@ -68,10 +64,11 @@ def save_record(photo, place_info, persona, explanation):
     record = {
         "id": record_id,
         "photo_filename": photo_filename,
-        "place_name": place_info["name"],
-        "lat": place_info["lat"],
-        "lng": place_info["lng"],
-        "category": place_info["category"],
+        "place_name": place_info.get("name", "알 수 없는 장소"),
+        "location": place_info.get("location", ""),
+        "lat": place_info.get("lat", 0),
+        "lng": place_info.get("lng", 0),
+        "category": place_info.get("category", "기타"),
         "persona": persona,
         "ai_explanation": explanation,
         "date": now.strftime("%Y-%m-%d"),
@@ -84,12 +81,10 @@ def save_record(photo, place_info, persona, explanation):
 
 
 def load_all_records():
-    """전체 방문 기록을 반환한다."""
     data = _load_json()
     return data["records"]
 
 
 def load_records_by_place(place_name):
-    """특정 장소의 방문 기록만 반환한다."""
     records = load_all_records()
     return [r for r in records if r["place_name"] == place_name]
