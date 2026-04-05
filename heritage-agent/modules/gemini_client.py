@@ -20,7 +20,7 @@ if not _API_KEY:
 if _API_KEY:
     genai.configure(api_key=_API_KEY)
 
-MODEL_NAME = "gemini-2.0-flash"
+MODEL_NAME = "gemini-2.5-flash"
 
 
 def generate_explanation(image, prompt):
