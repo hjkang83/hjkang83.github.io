@@ -1,0 +1,7 @@
+streamlit
+google-generativeai
+Pillow
+folium
+streamlit-folium
+gTTS
+python-dotenv
