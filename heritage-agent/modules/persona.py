@@ -58,7 +58,7 @@ def build_prompt(persona, place_name, reference_text):
     Returns:
         완성된 프롬프트 문자열
     """
-    system_instruction = PERSONA_PROMPTS.get(persona, PERSONA_PROMPTS["general"])
+    system_instruction = PERSONA_PROMPTS.get(persona, PERSONA_PROMPTS["adult_male"])
 
     return (
         f"{system_instruction}\n\n"
