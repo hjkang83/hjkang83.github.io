@@ -106,13 +106,48 @@ def identify_place(image, gps_info=None):
         return None
 
 
-def generate_historical_image(image, place_name, place_location=""):
-    """현재 사진을 기반으로 그 시대의 모습을 재현한 이미지를 생성한다.
+PERSONA_IMAGE_STYLE = {
+    "child": (
+        "Draw this in a colorful, friendly cartoon/illustration style "
+        "like a children's picture book. Use bright warm colors, "
+        "cute simplified characters in historical clothing, "
+        "and a cheerful magical atmosphere. Add fun details a child would enjoy."
+    ),
+    "teenager": (
+        "Render this in a dramatic anime/webtoon style. "
+        "Use dynamic lighting and cinematic composition. "
+        "Show cool historical characters in action poses. "
+        "Make it look like a scene from an epic historical manga or game."
+    ),
+    "adult_male": (
+        "Generate a photorealistic architectural reconstruction. "
+        "Focus on structural details, construction techniques, and engineering. "
+        "Use dramatic lighting to highlight the building's form and scale. "
+        "Include period-accurate technical details."
+    ),
+    "adult_female": (
+        "Create a beautiful, atmospheric watercolor-style painting. "
+        "Focus on the artistic beauty and emotional mood of the era. "
+        "Show the daily life of people, with soft warm lighting "
+        "and romantic historical atmosphere. Include cultural and fashion details."
+    ),
+    "expert": (
+        "Generate a precise academic architectural reconstruction. "
+        "Use a style similar to historical survey illustrations or "
+        "archaeological reconstruction drawings. Show accurate period details, "
+        "original materials, colors based on historical records, and annotations."
+    ),
+}
+
+
+def generate_historical_image(image, place_name, place_location="", voice_key="adult_male"):
+    """현재 사진을 기반으로 페르소나에 맞는 역사 재현 이미지를 생성한다.
 
     Args:
         image: PIL Image 객체 (현재 사진)
         place_name: 건물/장소 이름
         place_location: 위치 정보
+        voice_key: 페르소나 키 (이미지 스타일 결정)
 
     Returns:
         PIL Image 객체 (생성된 역사 재현 이미지) 또는 None
@@ -121,15 +156,14 @@ def generate_historical_image(image, place_name, place_location=""):
         return None
 
     location_info = f" in {place_location}" if place_location else ""
+    style = PERSONA_IMAGE_STYLE.get(voice_key, PERSONA_IMAGE_STYLE["adult_male"])
 
     prompt = (
         f"Based on this photo of {place_name}{location_info}, "
-        f"generate a realistic historical image showing what this exact place "
+        f"generate an image showing what this exact place "
         f"looked like during its peak historical period or when it was first built. "
         f"Keep the same angle and composition as the original photo. "
-        f"Show the building in its original glory with period-appropriate surroundings, "
-        f"people in historical clothing, and the atmosphere of that era. "
-        f"Make it photorealistic and historically accurate."
+        f"{style}"
     )
 
     try:

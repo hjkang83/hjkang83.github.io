@@ -205,10 +205,10 @@ def show_main_app():
                     }
                     save_record(image, place_info, profile["name"], explanation)
 
-                    # 역사 재현 이미지 생성
+                    # 역사 재현 이미지 생성 (페르소나별 스타일)
                     with st.spinner("🎨 그 시대의 모습을 재현하고 있습니다..."):
                         historical_img = generate_historical_image(
-                            image, place_name, place_info["location"]
+                            image, place_name, place_info["location"], voice_key
                         )
 
                     st.session_state["result"] = {
