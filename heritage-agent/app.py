@@ -6,116 +6,126 @@ from PIL import Image
 from streamlit_folium import st_folium
 
 from modules.gps_extractor import extract_gps
-from modules.persona import build_prompt, PERSONA_LABELS
+from modules.persona import build_prompt, get_voice_key
 from modules.gemini_client import generate_explanation, identify_place
 from modules.tts import text_to_speech
-from modules.storage import save_record, load_all_records
+from modules.storage import (
+    save_record, load_all_records,
+    save_profile, load_all_profiles, delete_profile,
+)
 from modules.map_album import create_map
 
 st.set_page_config(page_title="On-Go (to Heritage)", layout="centered")
 
-# ── 프로필 정의 ──
-PROFILES = {
-    "child": {"icon": "👶", "name": "어린이", "color": "#FF6B6B", "desc": "쉽고 재미있게!"},
-    "teenager": {"icon": "🧑‍🎓", "name": "청소년", "color": "#4ECDC4", "desc": "교과서랑 연결!"},
-    "adult_male": {"icon": "👨", "name": "성인남성", "color": "#45B7D1", "desc": "구조와 역사 중심"},
-    "adult_female": {"icon": "👩", "name": "성인여성", "color": "#DDA0DD", "desc": "감성과 이야기 중심"},
-    "expert": {"icon": "🎓", "name": "전문가", "color": "#F7DC6F", "desc": "학술적 심층 분석"},
-}
+GENDER_ICONS = {"남성": "👨", "여성": "👩", "기타": "🧑"}
+MBTI_LIST = [
+    "", "INTJ", "INTP", "ENTJ", "ENTP",
+    "INFJ", "INFP", "ENFJ", "ENFP",
+    "ISTJ", "ISFJ", "ESTJ", "ESFJ",
+    "ISTP", "ISFP", "ESTP", "ESFP",
+]
 
 
-def show_profile_select():
-    """넷플릭스 스타일 프로필 선택 화면."""
+# ── 프로필 선택/생성 화면 ──
+def show_profile_screen():
     st.markdown(
         """
         <style>
-        .profile-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 40px;
-        }
-        .profile-card {
-            text-align: center;
-            cursor: pointer;
-            transition: transform 0.2s;
-            width: 120px;
-        }
-        .profile-card:hover {
-            transform: scale(1.1);
-        }
-        .profile-icon {
-            font-size: 60px;
-            display: block;
-            margin-bottom: 8px;
-        }
-        .profile-name {
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
-        .profile-desc {
-            font-size: 12px;
-            color: #888;
-        }
-        .title-center {
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        .subtitle-center {
-            text-align: center;
-            color: #888;
-            margin-bottom: 40px;
-        }
+        .title-center { text-align: center; margin-bottom: 5px; }
+        .subtitle-center { text-align: center; color: #888; margin-bottom: 30px; }
         </style>
         """,
         unsafe_allow_html=True,
     )
-
     st.markdown('<h1 class="title-center">On-Go (to Heritage)</h1>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle-center">누가 사용하나요?</p>', unsafe_allow_html=True)
 
-    # 프로필 버튼들 (Streamlit columns 사용)
-    cols = st.columns(5)
-    for i, (key, profile) in enumerate(PROFILES.items()):
-        with cols[i]:
-            st.markdown(
-                f"""
-                <div style="text-align:center; padding:10px;">
-                    <div style="font-size:60px;">{profile['icon']}</div>
-                    <div style="font-size:14px; font-weight:bold; margin-top:8px;">{profile['name']}</div>
-                    <div style="font-size:11px; color:#888;">{profile['desc']}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            if st.button(f"{profile['name']}", key=f"profile_{key}", use_container_width=True):
-                st.session_state["profile"] = key
-                st.session_state["profile_name"] = profile["name"]
-                st.session_state["profile_icon"] = profile["icon"]
+    profiles = load_all_profiles()
+
+    # 기존 프로필 표시
+    if profiles:
+        cols = st.columns(min(len(profiles), 4))
+        for i, prof in enumerate(profiles):
+            with cols[i % 4]:
+                icon = GENDER_ICONS.get(prof.get("gender", ""), "🧑")
+                expert_badge = " ⭐" if prof.get("expert_mode") else ""
+                mbti_str = f" | {prof['mbti']}" if prof.get("mbti") else ""
+                st.markdown(
+                    f"""
+                    <div style="text-align:center; padding:15px; border:2px solid #333;
+                                border-radius:15px; margin-bottom:10px;">
+                        <div style="font-size:50px;">{icon}</div>
+                        <div style="font-size:16px; font-weight:bold; margin-top:5px;">
+                            {prof['name']}{expert_badge}
+                        </div>
+                        <div style="font-size:12px; color:#888;">
+                            {prof.get('age', '')}세 | {prof.get('gender', '')}{mbti_str}
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                col_enter, col_del = st.columns(2)
+                with col_enter:
+                    if st.button("선택", key=f"select_{i}", use_container_width=True):
+                        st.session_state["active_profile"] = prof
+                        st.rerun()
+                with col_del:
+                    if st.button("삭제", key=f"delete_{i}", use_container_width=True):
+                        delete_profile(prof["name"])
+                        st.rerun()
+
+    # 새 프로필 추가 폼
+    st.divider()
+    st.subheader("➕ 새 프로필 만들기")
+
+    with st.form("new_profile_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            new_name = st.text_input("이름", placeholder="홍길동")
+            new_age = st.number_input("나이", min_value=1, max_value=120, value=25)
+        with col2:
+            new_gender = st.selectbox("성별", ["남성", "여성", "기타"])
+            new_mbti = st.selectbox("MBTI (선택사항)", MBTI_LIST)
+        new_expert = st.checkbox("🎓 전문가 모드 (학술적 심층 설명)")
+
+        submitted = st.form_submit_button("프로필 만들기", type="primary", use_container_width=True)
+        if submitted:
+            if not new_name.strip():
+                st.error("이름을 입력해주세요.")
+            else:
+                profile = {
+                    "name": new_name.strip(),
+                    "age": new_age,
+                    "gender": new_gender,
+                    "mbti": new_mbti,
+                    "expert_mode": new_expert,
+                }
+                save_profile(profile)
+                st.session_state["active_profile"] = profile
                 st.rerun()
 
 
+# ── 메인 앱 화면 ──
 def show_main_app():
-    """메인 앱 화면."""
-    profile = st.session_state["profile"]
-    profile_info = PROFILES[profile]
+    profile = st.session_state["active_profile"]
+    icon = GENDER_ICONS.get(profile.get("gender", ""), "🧑")
+    voice_key = get_voice_key(profile)
 
-    # 상단 헤더 (프로필 표시 + 전환 버튼)
+    # 상단 헤더
     header_col1, header_col2 = st.columns([4, 1])
     with header_col1:
         st.title("On-Go (to Heritage)")
-        st.caption(f"Heritage AI Tour Guide Agent | {profile_info['icon']} {profile_info['name']} 모드")
+        expert_str = " | 🎓 전문가 모드" if profile.get("expert_mode") else ""
+        mbti_str = f" | {profile['mbti']}" if profile.get("mbti") else ""
+        st.caption(f"{icon} {profile['name']} ({profile['age']}세{mbti_str}{expert_str})")
     with header_col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🔄 프로필 전환", use_container_width=True):
-            st.session_state.pop("profile", None)
+        if st.button("🔄 전환", use_container_width=True):
+            st.session_state.pop("active_profile", None)
             st.session_state.pop("result", None)
             st.session_state.pop("_identify_key", None)
             st.rerun()
-
-    persona_key = profile
 
     tab_guide, tab_map = st.tabs(["📸 가이드", "🗺️ 지도 앨범"])
 
@@ -162,11 +172,7 @@ def show_main_app():
                     f"💡 근거: {ai_result.get('description', '')}"
                     f"{coord_str}"
                 )
-
-                place_name = st.text_input(
-                    "장소 이름을 확인하거나 수정하세요",
-                    value=ai_result["name"],
-                )
+                place_name = st.text_input("장소 이름을 확인하거나 수정하세요", value=ai_result["name"])
             else:
                 st.warning("AI가 장소를 인식하지 못했습니다. 직접 입력해주세요.")
                 place_name = st.text_input("장소 이름을 입력하세요", value="")
@@ -174,13 +180,13 @@ def show_main_app():
             if place_name:
                 if st.button("🔍 설명 받기", type="primary", use_container_width=True):
                     place_location = ai_result.get("location", "") if ai_result else ""
-                    prompt = build_prompt(persona_key, place_name, place_location)
+                    prompt = build_prompt(profile, place_name, place_location)
 
                     with st.spinner("AI가 설명을 준비하고 있습니다..."):
                         explanation = generate_explanation(image, prompt)
 
                     with st.spinner("음성을 생성하고 있습니다..."):
-                        mp3_bytes = text_to_speech(explanation, persona_key)
+                        mp3_bytes = text_to_speech(explanation, voice_key)
 
                     # 좌표 결정
                     if gps:
@@ -197,7 +203,7 @@ def show_main_app():
                         "lat": lat,
                         "lng": lng,
                     }
-                    save_record(image, place_info, persona_key, explanation)
+                    save_record(image, place_info, profile["name"], explanation)
 
                     st.session_state["result"] = {
                         "place_name": place_name,
@@ -229,7 +235,7 @@ def show_main_app():
                 location_str = f" - {rec.get('location', '')}" if rec.get("location") else ""
                 with st.expander(
                     f"{rec['date']} - {rec['place_name']}{location_str} "
-                    f"({PERSONA_LABELS.get(rec['persona'], rec['persona'])})"
+                    f"({rec.get('persona', '')})"
                 ):
                     photo_path = os.path.join(
                         os.path.dirname(__file__), "user_data", "photos", rec.get("photo_filename", "")
@@ -242,7 +248,7 @@ def show_main_app():
 
 
 # ── 라우팅 ──
-if "profile" not in st.session_state:
-    show_profile_select()
+if "active_profile" not in st.session_state:
+    show_profile_screen()
 else:
     show_main_app()

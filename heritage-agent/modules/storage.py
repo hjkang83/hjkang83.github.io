@@ -8,6 +8,7 @@ from PIL import Image
 
 BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "user_data")
 RECORDS_PATH = os.path.join(BASE_DIR, "records.json")
+PROFILES_PATH = os.path.join(BASE_DIR, "profiles.json")
 PHOTOS_DIR = os.path.join(BASE_DIR, "photos")
 
 
@@ -88,3 +89,45 @@ def load_all_records():
 def load_records_by_place(place_name):
     records = load_all_records()
     return [r for r in records if r["place_name"] == place_name]
+
+
+# ── 프로필 관리 ──
+
+def _load_profiles_json():
+    _ensure_dirs()
+    if not os.path.exists(PROFILES_PATH):
+        return {"profiles": []}
+    with open(PROFILES_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _save_profiles_json(data):
+    _ensure_dirs()
+    with open(PROFILES_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def save_profile(profile):
+    """프로필을 저장한다. 같은 이름이면 업데이트.
+
+    Args:
+        profile: {"name": str, "age": int, "gender": str, "mbti": str, "expert_mode": bool}
+    """
+    data = _load_profiles_json()
+    existing = [i for i, p in enumerate(data["profiles"]) if p["name"] == profile["name"]]
+    if existing:
+        data["profiles"][existing[0]] = profile
+    else:
+        data["profiles"].append(profile)
+    _save_profiles_json(data)
+
+
+def load_all_profiles():
+    data = _load_profiles_json()
+    return data["profiles"]
+
+
+def delete_profile(name):
+    data = _load_profiles_json()
+    data["profiles"] = [p for p in data["profiles"] if p["name"] != name]
+    _save_profiles_json(data)
