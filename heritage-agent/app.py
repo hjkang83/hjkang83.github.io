@@ -227,7 +227,7 @@ def show_main_app():
 
                     # 역사 재현 버튼
                     if "historical_img" not in st.session_state:
-                        if st.button("🎨 그 시대의 모습 재현하기", use_container_width=True):
+                        if st.button("🎨 그 시대의 모습 재현하기", type="primary", use_container_width=True):
                             with st.spinner("🎨 그 시대의 모습을 재현하고 있습니다..."):
                                 img_result = generate_historical_image(
                                     image, result["place_name"], result["location"],
