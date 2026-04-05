@@ -75,23 +75,34 @@ with tab_guide:
             with st.spinner("AI가 설명을 준비하고 있습니다..."):
                 explanation = generate_explanation(image, prompt)
 
-            st.subheader(f"📍 {place_info['name']}")
-            st.write(explanation)
-
-            # 음성 재생
+            # 음성 생성
             with st.spinner("음성을 생성하고 있습니다..."):
                 mp3_bytes = text_to_speech(explanation)
-            st.audio(mp3_bytes, format="audio/mp3")
 
             # 자동 저장
             save_record(image, place_info, persona_key, explanation)
+
+            # 결과를 session_state에 저장
+            st.session_state["result"] = {
+                "place_name": place_info["name"],
+                "explanation": explanation,
+                "mp3_bytes": mp3_bytes,
+                "category": place_info["category"],
+            }
+
+        # session_state에 결과가 있으면 표시
+        if "result" in st.session_state:
+            result = st.session_state["result"]
+            st.subheader(f"📍 {result['place_name']}")
+            st.write(result["explanation"])
+            st.audio(result["mp3_bytes"], format="audio/mp3")
             st.success("✅ 방문 기록이 저장되었습니다!")
 
             # 근처 다른 볼거리
             all_places = load_places()
             nearby = [
                 p for p in all_places
-                if p["category"] == place_info["category"] and p["name"] != place_info["name"]
+                if p["category"] == result["category"] and p["name"] != result["place_name"]
             ]
             if nearby:
                 st.divider()
