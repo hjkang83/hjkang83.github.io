@@ -149,6 +149,7 @@ def show_main_app():
                 st.session_state["_identify_result"] = ai_result
                 st.session_state.pop("result", None)
                 st.session_state.pop("historical_img", None)
+                st.session_state.pop("historical_error", None)
             else:
                 ai_result = st.session_state.get("_identify_result")
 
@@ -225,13 +226,22 @@ def show_main_app():
                     st.success("✅ 방문 기록이 저장되었습니다!")
 
                     # 역사 재현 버튼
-                    if st.button("🎨 그 시대의 모습 재현하기", use_container_width=True):
-                        with st.spinner("🎨 그 시대의 모습을 재현하고 있습니다..."):
-                            historical_img = generate_historical_image(
-                                image, result["place_name"], result["location"],
-                                result.get("voice_key", "adult_male"),
-                            )
-                        st.session_state["historical_img"] = historical_img
+                    if "historical_img" not in st.session_state:
+                        if st.button("🎨 그 시대의 모습 재현하기", use_container_width=True):
+                            with st.spinner("🎨 그 시대의 모습을 재현하고 있습니다..."):
+                                img_result = generate_historical_image(
+                                    image, result["place_name"], result["location"],
+                                    result.get("voice_key", "adult_male"),
+                                )
+                            if isinstance(img_result, dict) and "error" in img_result:
+                                st.session_state["historical_error"] = img_result["error"]
+                            else:
+                                st.session_state["historical_img"] = img_result
+                            st.rerun()
+
+                    # 에러 표시
+                    if st.session_state.get("historical_error"):
+                        st.error(f"⚠️ {st.session_state['historical_error']}")
 
                     # 역사 재현 이미지 표시
                     if st.session_state.get("historical_img"):

@@ -153,7 +153,7 @@ def generate_historical_image(image, place_name, place_location="", voice_key="a
         PIL Image 객체 (생성된 역사 재현 이미지) 또는 None
     """
     if not _genai2_client:
-        return None
+        return {"error": "API 클라이언트가 초기화되지 않았습니다. API 키를 확인해주세요."}
 
     location_info = f" in {place_location}" if place_location else ""
     style = PERSONA_IMAGE_STYLE.get(voice_key, PERSONA_IMAGE_STYLE["adult_male"])
@@ -181,6 +181,6 @@ def generate_historical_image(image, place_name, place_location="", voice_key="a
                 img_bytes = part.inline_data.data
                 return PILImage.open(BytesIO(img_bytes))
 
-        return None
-    except Exception:
-        return None
+        return {"error": "AI가 이미지를 생성하지 못했습니다. 다른 사진으로 시도해보세요."}
+    except Exception as e:
+        return {"error": f"이미지 생성 실패: {e}"}
