@@ -89,7 +89,7 @@ with tab_guide:
                     explanation = generate_explanation(image, prompt)
 
                 with st.spinner("음성을 생성하고 있습니다..."):
-                    mp3_bytes = text_to_speech(explanation)
+                    mp3_bytes = text_to_speech(explanation, persona_key)
 
                 # 좌표 결정: GPS 우선 → AI 추정 좌표 fallback
                 if gps:
