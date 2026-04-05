@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Use Cases — Claude Features</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-primary:#0a0a0a; --bg-card:#141414; --bg-card-hover:#1a1a1a; --text-primary:#e8e6e3; --text-secondary:#8a8a8a; --accent:#c9a96e; --accent-dim:rgba(201,169,110,0.15); --border:#2a2a2a; --font-display:'Playfair Display',serif; --font-body:'Noto Sans KR',sans-serif; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:var(--font-body); background-color:var(--bg-primary); color:var(--text-primary); min-height:100vh; overflow-x:hidden; }
+        body::before { content:''; position:fixed; top:0; left:0; right:0; bottom:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events:none; z-index:1000; }
+        nav { position:fixed; top:0; width:100%; z-index:100; padding:24px 48px; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(to bottom,var(--bg-primary) 60%,transparent); }
+        .nav-logo { font-family:var(--font-display); font-size:1.4rem; font-weight:900; color:var(--accent); text-decoration:none; }
+        .nav-links { display:flex; gap:36px; list-style:none; }
+        .nav-links a { color:var(--text-secondary); text-decoration:none; font-size:0.85rem; letter-spacing:0.08em; text-transform:uppercase; transition:color 0.3s; position:relative; }
+        .nav-links a::after { content:''; position:absolute; bottom:-4px; left:0; width:0; height:1px; background:var(--accent); transition:width 0.3s; }
+        .nav-links a:hover { color:var(--text-primary); } .nav-links a:hover::after { width:100%; }
+        .nav-links a.active { color:var(--accent); } .nav-links a.active::after { width:100%; }
+        .page-header { padding:140px 48px 60px; max-width:900px; margin:0 auto; }
+        .breadcrumb { font-size:0.78rem; color:var(--text-secondary); margin-bottom:20px; }
+        .breadcrumb a { color:var(--accent); text-decoration:none; } .breadcrumb a:hover { text-decoration:underline; }
+        .feature-tag { display:inline-block; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:var(--accent); border:1px solid var(--accent); border-radius:20px; padding:3px 10px; margin-bottom:16px; }
+        .page-header h1 { font-family:var(--font-display); font-size:clamp(2.5rem,6vw,4rem); font-weight:900; line-height:1.1; margin-bottom:16px; }
+        .page-header-desc { font-size:1rem; color:var(--text-secondary); font-weight:300; line-height:1.8; max-width:620px; }
+        .content { padding:0 48px 60px; max-width:900px; margin:0 auto; }
+        .section-title { font-family:var(--font-display); font-size:1.4rem; font-weight:700; margin-bottom:28px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+
+        /* Use Case Blocks */
+        .usecase-blocks { display:flex; flex-direction:column; gap:32px; margin-bottom:60px; }
+        .usecase-block { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:32px; position:relative; overflow:hidden; transition:border-color 0.3s; }
+        .usecase-block::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); opacity:0; transition:opacity 0.3s; }
+        .usecase-block:hover { border-color:#3a3a3a; }
+        .usecase-block:hover::before { opacity:1; }
+        .usecase-header { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+        .usecase-icon { font-size:1.6rem; }
+        .usecase-title { font-family:var(--font-display); font-size:1.3rem; font-weight:700; }
+        .usecase-desc { font-size:0.88rem; color:var(--text-secondary); font-weight:300; line-height:1.9; margin-bottom:16px; }
+        .usecase-examples { display:flex; flex-wrap:wrap; gap:8px; }
+        .usecase-tag { font-size:0.76rem; color:var(--text-secondary); background:#1a1a1a; border:1px solid var(--border); border-radius:6px; padding:4px 10px; }
+
+        /* YouTube */
+        .yt-section { margin-bottom:60px; }
+        .yt-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        .yt-card { background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:20px; text-decoration:none; color:inherit; transition:all 0.3s; display:flex; flex-direction:column; gap:10px; }
+        .yt-card:hover { background:var(--bg-card-hover); border-color:#3a3a3a; transform:translateY(-2px); }
+        .yt-card.placeholder { opacity:0.45; cursor:default; pointer-events:none; }
+        .yt-badge { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#ff4e4e; }
+        .yt-badge.placeholder-badge { color:var(--text-secondary); }
+        .yt-title { font-size:0.92rem; font-weight:700; line-height:1.4; }
+        .yt-meta { font-size:0.78rem; color:var(--text-secondary); font-weight:300; }
+        .yt-arrow { font-size:0.78rem; color:var(--accent); margin-top:auto; }
+        .edit-tip { background:var(--bg-card); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; padding:14px 18px; margin-bottom:20px; font-size:0.82rem; color:var(--text-secondary); font-weight:300; line-height:1.6; }
+        .edit-tip strong { color:var(--accent); }
+        footer { text-align:center; padding:40px; color:var(--text-secondary); font-size:0.75rem; letter-spacing:0.05em; border-top:1px solid var(--border); }
+        @media (max-width:768px) { nav { padding:16px 24px; } .nav-links { gap:16px; } .nav-links a { font-size:0.75rem; } .page-header { padding:110px 24px 48px; } .content { padding:0 24px 60px; } .yt-grid { grid-template-columns:1fr; } .usecase-block { padding:24px; } }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="index.html" class="nav-logo">HJ.</a>
+    <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="introduction.html">Introduction</a></li>
+        <li><a href="career.html">Career</a></li>
+        <li><a href="claude.html" class="active">Claude</a></li>
+    </ul>
+</nav>
+
+<div class="page-header">
+    <p class="breadcrumb"><a href="claude.html">Claude Features</a> &nbsp;/&nbsp; Use Cases</p>
+    <span class="feature-tag">Real-world</span>
+    <h1>Use Cases</h1>
+    <p class="page-header-desc">Claude는 업종과 직무를 가리지 않고 실질적인 가치를 만들어냅니다. 대표적인 활용 사례와 구체적인 예시를 소개합니다.</p>
+</div>
+
+<div class="content">
+
+    <p class="section-title">주요 활용 분야</p>
+    <div class="usecase-blocks">
+
+        <div class="usecase-block">
+            <div class="usecase-header">
+                <span class="usecase-icon">⚙️</span>
+                <h2 class="usecase-title">업무 자동화</h2>
+            </div>
+            <p class="usecase-desc">반복적인 사무 작업을 Claude에게 위임해 생산성을 높입니다. 보고서 초안 작성, 회의록 요약, 이메일 답변 생성, 데이터 정리 등 루틴 업무에 바로 적용할 수 있습니다.</p>
+            <div class="usecase-examples">
+                <span class="usecase-tag">주간 보고서 자동 생성</span>
+                <span class="usecase-tag">이메일 초안 작성</span>
+                <span class="usecase-tag">회의록 요약 및 액션 아이템 추출</span>
+                <span class="usecase-tag">데이터 분류 및 정리</span>
+                <span class="usecase-tag">계약서 검토</span>
+            </div>
+        </div>
+
+        <div class="usecase-block">
+            <div class="usecase-header">
+                <span class="usecase-icon">💻</span>
+                <h2 class="usecase-title">소프트웨어 개발</h2>
+            </div>
+            <p class="usecase-desc">Claude Code를 통해 코드 작성부터 배포까지 개발 전 과정을 지원합니다. 단순 코드 생성을 넘어 아키텍처 설계, 버그 분석, 테스트 코드 작성, 레거시 코드 리팩토링까지 가능합니다.</p>
+            <div class="usecase-examples">
+                <span class="usecase-tag">신규 기능 구현</span>
+                <span class="usecase-tag">버그 디버깅</span>
+                <span class="usecase-tag">테스트 코드 자동 생성</span>
+                <span class="usecase-tag">코드 리뷰 및 리팩토링</span>
+                <span class="usecase-tag">API 연동</span>
+                <span class="usecase-tag">문서화 (README, JSDoc)</span>
+            </div>
+        </div>
+
+        <div class="usecase-block">
+            <div class="usecase-header">
+                <span class="usecase-icon">🔬</span>
+                <h2 class="usecase-title">연구 및 분석</h2>
+            </div>
+            <p class="usecase-desc">방대한 자료를 빠르게 요약·분석하고 인사이트를 도출합니다. 논문 리뷰, 시장 조사, 경쟁사 분석, 데이터 해석 등 연구 보조 역할에 특히 강합니다.</p>
+            <div class="usecase-examples">
+                <span class="usecase-tag">논문 요약 및 핵심 추출</span>
+                <span class="usecase-tag">문헌 조사</span>
+                <span class="usecase-tag">데이터 패턴 분석</span>
+                <span class="usecase-tag">인사이트 도출 보고서</span>
+                <span class="usecase-tag">경쟁사 비교 분석</span>
+            </div>
+        </div>
+
+        <div class="usecase-block">
+            <div class="usecase-header">
+                <span class="usecase-icon">📡</span>
+                <h2 class="usecase-title">네트워크 운용 (개인 활용 사례)</h2>
+            </div>
+            <p class="usecase-desc">LG유플러스 모바일 코어망 운용 경험에 기반해, Claude를 네트워크 엔지니어링 업무에 직접 활용하고 있습니다. 장애 분석 보고서 작성, 설정 스크립트 자동화, 위성통신 분석 등에 효과적입니다.</p>
+            <div class="usecase-examples">
+                <span class="usecase-tag">장애 분석 및 RCA 보고서</span>
+                <span class="usecase-tag">네트워크 설정 스크립트 생성</span>
+                <span class="usecase-tag">로그 패턴 분석</span>
+                <span class="usecase-tag">AI 기반 운용 자동화 시나리오 설계</span>
+                <span class="usecase-tag">LEO 위성통신 연구 지원</span>
+            </div>
+        </div>
+
+        <div class="usecase-block">
+            <div class="usecase-header">
+                <span class="usecase-icon">📚</span>
+                <h2 class="usecase-title">교육 및 학습</h2>
+            </div>
+            <p class="usecase-desc">복잡한 개념을 쉽게 설명받고, 나만의 학습 자료를 생성합니다. KAIST MBA 과정에서도 강의 내용 정리, 케이스 스터디 분석, 프레젠테이션 준비에 활발히 활용하고 있습니다.</p>
+            <div class="usecase-examples">
+                <span class="usecase-tag">개념 설명 및 요약</span>
+                <span class="usecase-tag">퀴즈·문제 자동 생성</span>
+                <span class="usecase-tag">케이스 스터디 분석</span>
+                <span class="usecase-tag">강의 자료 구성</span>
+                <span class="usecase-tag">개인 맞춤 학습 계획</span>
+            </div>
+        </div>
+
+        <div class="usecase-block">
+            <div class="usecase-header">
+                <span class="usecase-icon">🤝</span>
+                <h2 class="usecase-title">비즈니스 전략</h2>
+            </div>
+            <p class="usecase-desc">경영 의사결정을 위한 전략 문서 작성과 아이디어 검증에 활용합니다. 사업 계획서, IR 자료, 제안서, 프레젠테이션 구성 등 커뮤니케이션 자료 전반을 빠르게 완성할 수 있습니다.</p>
+            <div class="usecase-examples">
+                <span class="usecase-tag">사업 계획서 작성</span>
+                <span class="usecase-tag">IR 자료 초안</span>
+                <span class="usecase-tag">SWOT 분석</span>
+                <span class="usecase-tag">프레젠테이션 구성</span>
+                <span class="usecase-tag">아이디어 검증 및 피드백</span>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="yt-section">
+        <p class="section-title">관련 영상</p>
+        <div class="edit-tip">
+            <!-- YOUTUBE_EDIT_SECTION -->
+            플레이스홀더 카드의 <strong>href 링크</strong>와 <strong>제목·채널명</strong>을 직접 수정해 영상을 추가하세요. <code>class="yt-card placeholder"</code> → <code>class="yt-card"</code>로 바꾸면 활성화됩니다.
+        </div>
+        <div class="yt-grid">
+            <!-- YOUTUBE_PLACEHOLDER -->
+            <a class="yt-card placeholder" href="#" target="_blank" rel="noopener">
+                <span class="yt-badge placeholder-badge">▶ 추가 예정</span>
+                <p class="yt-title">How I Use Claude to 10x My Productivity</p>
+                <p class="yt-meta">채널명 · 연도</p>
+                <p class="yt-arrow">영상 보기 →</p>
+            </a>
+            <!-- YOUTUBE_PLACEHOLDER -->
+            <a class="yt-card placeholder" href="#" target="_blank" rel="noopener">
+                <span class="yt-badge placeholder-badge">▶ 추가 예정</span>
+                <p class="yt-title">Claude AI for Business — Real Workflow Examples</p>
+                <p class="yt-meta">채널명 · 연도</p>
+                <p class="yt-arrow">영상 보기 →</p>
+            </a>
+            <!-- YOUTUBE_PLACEHOLDER -->
+            <a class="yt-card placeholder" href="#" target="_blank" rel="noopener">
+                <span class="yt-badge placeholder-badge">▶ 추가 예정</span>
+                <p class="yt-title">영상 제목을 여기에 입력하세요</p>
+                <p class="yt-meta">채널명 · 연도</p>
+                <p class="yt-arrow">영상 보기 →</p>
+            </a>
+            <!-- YOUTUBE_PLACEHOLDER -->
+            <a class="yt-card placeholder" href="#" target="_blank" rel="noopener">
+                <span class="yt-badge placeholder-badge">▶ 추가 예정</span>
+                <p class="yt-title">영상 제목을 여기에 입력하세요</p>
+                <p class="yt-meta">채널명 · 연도</p>
+                <p class="yt-arrow">영상 보기 →</p>
+            </a>
+        </div>
+    </div>
+
+</div>
+<footer>&copy; 2026 — Built with GitHub Pages</footer>
+</body>
+</html>

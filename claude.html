@@ -274,6 +274,26 @@
             border-top: 1px solid var(--border);
         }
 
+        /* --- Feature Link --- */
+        .feature-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: var(--accent);
+            text-decoration: none;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            opacity: 0;
+            transform: translateX(-8px);
+            transition: all 0.3s;
+        }
+        .feature-block:hover .feature-link {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
         /* --- Responsive --- */
         @media (max-width: 768px) {
             nav { padding: 16px 24px; }
@@ -332,6 +352,7 @@
                     <span class="feature-point">파일 시스템 탐색</span>
                     <span class="feature-point">멀티 파일 리팩토링</span>
                 </div>
+                <a href="claude_code.html" class="feature-link">자세히 보기 →</a>
             </div>
         </div>
 
@@ -352,6 +373,7 @@
                     <span class="feature-point">커스텀 에이전트 정의</span>
                     <span class="feature-point">팀 공유 및 협업</span>
                 </div>
+                <a href="claude_skills.html" class="feature-link">자세히 보기 →</a>
             </div>
         </div>
 
@@ -373,6 +395,7 @@
                     <span class="feature-point">커스텀 지시사항 설정</span>
                     <span class="feature-point">팀 프로젝트 공유</span>
                 </div>
+                <a href="claude_projects.html" class="feature-link">자세히 보기 →</a>
             </div>
         </div>
 
@@ -393,6 +416,7 @@
                     <span class="feature-point">자동 작업 분배</span>
                     <span class="feature-point">결과 취합 및 통합</span>
                 </div>
+                <a href="claude_dispatch.html" class="feature-link">자세히 보기 →</a>
             </div>
         </div>
 
@@ -414,6 +438,7 @@
                     <span class="feature-point">데스크탑 앱 조작</span>
                     <span class="feature-point">반복 업무 완전 자동화</span>
                 </div>
+                <a href="claude_computer_use.html" class="feature-link">자세히 보기 →</a>
             </div>
         </div>
 
@@ -435,6 +460,7 @@
                     <span class="feature-point">차트 및 시각화</span>
                     <span class="feature-point">저장 및 공유</span>
                 </div>
+                <a href="claude_artifacts.html" class="feature-link">자세히 보기 →</a>
             </div>
         </div>
 
@@ -448,6 +474,7 @@
                     Claude는 다양한 산업과 업무 환경에서 실질적인 가치를 만들어냅니다.
                     아래는 대표적인 활용 사례입니다.
                 </p>
+                <a href="claude_usecases.html" class="feature-link" style="margin-bottom:16px;">자세히 보기 →</a>
                 <div class="usecase-grid">
                     <div class="usecase-card">
                         <div class="usecase-icon">⚙️</div>

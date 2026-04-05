@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Computer Use — Claude Features</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-primary:#0a0a0a; --bg-card:#141414; --bg-card-hover:#1a1a1a; --text-primary:#e8e6e3; --text-secondary:#8a8a8a; --accent:#c9a96e; --accent-dim:rgba(201,169,110,0.15); --border:#2a2a2a; --font-display:'Playfair Display',serif; --font-body:'Noto Sans KR',sans-serif; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:var(--font-body); background-color:var(--bg-primary); color:var(--text-primary); min-height:100vh; overflow-x:hidden; }
+        body::before { content:''; position:fixed; top:0; left:0; right:0; bottom:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events:none; z-index:1000; }
+        nav { position:fixed; top:0; width:100%; z-index:100; padding:24px 48px; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(to bottom,var(--bg-primary) 60%,transparent); }
+        .nav-logo { font-family:var(--font-display); font-size:1.4rem; font-weight:900; color:var(--accent); text-decoration:none; }
+        .nav-links { display:flex; gap:36px; list-style:none; }
+        .nav-links a { color:var(--text-secondary); text-decoration:none; font-size:0.85rem; letter-spacing:0.08em; text-transform:uppercase; transition:color 0.3s; position:relative; }
+        .nav-links a::after { content:''; position:absolute; bottom:-4px; left:0; width:0; height:1px; background:var(--accent); transition:width 0.3s; }
+        .nav-links a:hover { color:var(--text-primary); } .nav-links a:hover::after { width:100%; }
+        .nav-links a.active { color:var(--accent); } .nav-links a.active::after { width:100%; }
+        .page-header { padding:140px 48px 60px; max-width:900px; margin:0 auto; }
+        .breadcrumb { font-size:0.78rem; color:var(--text-secondary); margin-bottom:20px; }
+        .breadcrumb a { color:var(--accent); text-decoration:none; } .breadcrumb a:hover { text-decoration:underline; }
+        .feature-tag { display:inline-block; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:var(--accent); border:1px solid var(--accent); border-radius:20px; padding:3px 10px; margin-bottom:16px; }
+        .page-header h1 { font-family:var(--font-display); font-size:clamp(2.5rem,6vw,4rem); font-weight:900; line-height:1.1; margin-bottom:16px; }
+        .page-header-desc { font-size:1rem; color:var(--text-secondary); font-weight:300; line-height:1.8; max-width:620px; }
+        .content { padding:0 48px 60px; max-width:900px; margin:0 auto; }
+        .section-title { font-family:var(--font-display); font-size:1.4rem; font-weight:700; margin-bottom:28px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+        .steps { display:flex; flex-direction:column; gap:20px; margin-bottom:60px; }
+        .step { display:grid; grid-template-columns:48px 1fr; gap:20px; align-items:start; }
+        .step-num { width:48px; height:48px; border-radius:50%; background:var(--accent-dim); border:1px solid var(--accent); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:900; color:var(--accent); font-size:1rem; flex-shrink:0; }
+        .step-title { font-size:1rem; font-weight:700; margin-bottom:6px; }
+        .step-desc { font-size:0.88rem; color:var(--text-secondary); font-weight:300; line-height:1.8; }
+        code { background:#1e1e1e; border:1px solid var(--border); border-radius:4px; padding:2px 7px; font-size:0.82rem; color:var(--accent); font-family:'Courier New',monospace; }
+        pre { background:#111; border:1px solid var(--border); border-radius:8px; padding:16px 20px; margin:10px 0; overflow-x:auto; }
+        pre code { background:none; border:none; padding:0; font-size:0.85rem; color:#b0c4de; }
+        .notice-box { background:var(--bg-card); border:1px solid var(--border); border-left:3px solid #e08c3a; border-radius:8px; padding:14px 18px; margin-bottom:32px; font-size:0.82rem; color:var(--text-secondary); font-weight:300; line-height:1.6; }
+        .notice-box strong { color:#e08c3a; }
+        .yt-section { margin-bottom:60px; }
+        .yt-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        .yt-card { background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:20px; text-decoration:none; color:inherit; transition:all 0.3s; display:flex; flex-direction:column; gap:10px; }
+        .yt-card:hover { background:var(--bg-card-hover); border-color:#3a3a3a; transform:translateY(-2px); }
+        .yt-card.placeholder { opacity:0.45; cursor:default; pointer-events:none; }
+        .yt-badge { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#ff4e4e; }
+        .yt-badge.placeholder-badge { color:var(--text-secondary); }
+        .yt-title { font-size:0.92rem; font-weight:700; line-height:1.4; }
+        .yt-meta { font-size:0.78rem; color:var(--text-secondary); font-weight:300; }
+        .yt-arrow { font-size:0.78rem; color:var(--accent); margin-top:auto; }
+        .edit-tip { background:var(--bg-card); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; padding:14px 18px; margin-bottom:20px; font-size:0.82rem; color:var(--text-secondary); font-weight:300; line-height:1.6; }
+        .edit-tip strong { color:var(--accent); }
+        footer { text-align:center; padding:40px; color:var(--text-secondary); font-size:0.75rem; letter-spacing:0.05em; border-top:1px solid var(--border); }
+        @media (max-width:768px) { nav { padding:16px 24px; } .nav-links { gap:16px; } .nav-links a { font-size:0.75rem; } .page-header { padding:110px 24px 48px; } .content { padding:0 24px 60px; } .yt-grid { grid-template-columns:1fr; } .step { grid-template-columns:40px 1fr; gap:14px; } }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="index.html" class="nav-logo">HJ.</a>
+    <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="introduction.html">Introduction</a></li>
+        <li><a href="career.html">Career</a></li>
+        <li><a href="claude.html" class="active">Claude</a></li>
+    </ul>
+</nav>
+
+<div class="page-header">
+    <p class="breadcrumb"><a href="claude.html">Claude Features</a> &nbsp;/&nbsp; Computer Use</p>
+    <span class="feature-tag">Autonomous</span>
+    <h1>Computer Use</h1>
+    <p class="page-header-desc">화면을 직접 보고 마우스·키보드를 조작하는 AI. 브라우저, 데스크탑 앱 등 어떤 소프트웨어든 사람처럼 제어해 반복 업무를 완전 자동화합니다.</p>
+</div>
+
+<div class="content">
+
+    <div class="notice-box">
+        <strong>⚠ Research Preview</strong> — Computer Use는 현재 Research Preview 단계로, Claude Pro 또는 Max 플랜이 필요합니다. macOS 및 Windows에서 지원됩니다.
+    </div>
+
+    <p class="section-title">사용 방법</p>
+    <div class="steps">
+        <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+                <p class="step-title">요구 사항 확인</p>
+                <p class="step-desc">Computer Use를 사용하려면 <strong>Claude Pro 또는 Max 플랜</strong>이 필요합니다. Claude Code 또는 Claude Cowork 앱을 통해 접근할 수 있으며, macOS와 Windows를 지원합니다.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+                <p class="step-title">Claude Code에서 활성화</p>
+                <p class="step-desc">Claude Code 터미널에서 Computer Use 기능을 활성화합니다. 설정 메뉴에서 <strong>Computer Use</strong> 토글을 켜면 Claude가 현재 화면을 스크린샷으로 캡처하고 마우스·키보드를 제어할 수 있게 됩니다.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+                <p class="step-title">API로 직접 사용 (개발자)</p>
+                <p class="step-desc">Anthropic API를 통해 Computer Use 도구를 직접 호출할 수 있습니다. <code>computer_20251022</code> 도구를 사용하며, 스크린샷 캡처 → Claude 분석 → 액션 실행의 루프로 동작합니다.</p>
+                <pre><code># beta 헤더 필요
+anthropic-beta: computer-use-2024-10-22
+
+# 사용 가능한 도구
+- computer: 화면 캡처, 마우스/키보드 제어
+- bash: 터미널 명령 실행
+- text_editor: 파일 편집</code></pre>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+                <p class="step-title">자연어로 작업 지시</p>
+                <p class="step-desc">사람에게 지시하듯 자연어로 작업을 요청합니다. Claude가 화면을 보고 스스로 클릭, 타이핑, 스크롤, 파일 조작을 수행합니다.</p>
+                <pre><code># 예시 지시
+"보고서 초안을 PDF로 변환하고
+오늘 오후 2시 회의 초대에 첨부해줘"
+
+"바탕화면의 사진 150장 크기를
+1080px로 통일하고 로고를 삽입해줘"</code></pre>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">5</div>
+            <div class="step-body">
+                <p class="step-title">주의사항 및 보안</p>
+                <p class="step-desc">Claude가 화면 전체에 접근하므로 민감한 정보가 담긴 창은 미리 닫아두는 것이 좋습니다. 현재 단계에서는 오류가 발생할 수 있으며, 중요한 작업은 작업 후 결과를 반드시 검토하세요.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="yt-section">
+        <p class="section-title">관련 영상</p>
+        <div class="edit-tip">
+            <!-- YOUTUBE_EDIT_SECTION -->
+            플레이스홀더 카드의 <strong>href 링크</strong>와 <strong>제목·채널명</strong>을 직접 수정해 영상을 추가하세요. <code>class="yt-card placeholder"</code> → <code>class="yt-card"</code>로 바꾸면 활성화됩니다.
+        </div>
+        <div class="yt-grid">
+            <!-- YOUTUBE_PLACEHOLDER: Anthropic 공식 Computer Use 데모 -->
+            <a class="yt-card placeholder" href="#" target="_blank" rel="noopener">
+                <span class="yt-badge placeholder-badge">▶ 추가 예정</span>
+                <p class="yt-title">Introducing Computer Use — Anthropic Official Demo</p>
+                <p class="yt-meta">Anthropic · 2024</p>
+                <p class="yt-arrow">영상 보기 →</p>
+            </a>
+            <!-- YOUTUBE_PLACEHOLDER -->
+            <a class="yt-card placeholder" href="#" target="_blank" rel="noopener">
+                <span class="yt-badge placeholder-badge">▶ 추가 예정</span>
+                <p class="yt-title">Claude Computer Use: Mac Desktop Automation</p>
+                <p class="yt-meta">채널명 · 2026</p>
+                <p class="yt-arrow">영상 보기 →</p>
+            </a>
+            <!-- YOUTUBE_PLACEHOLDER -->
+            <a class="yt-card placeholder" href="#" target="_blank" rel="noopener">
+                <span class="yt-badge placeholder-badge">▶ 추가 예정</span>
+                <p class="yt-title">영상 제목을 여기에 입력하세요</p>
+                <p class="yt-meta">채널명 · 연도</p>
+                <p class="yt-arrow">영상 보기 →</p>
+            </a>
+            <!-- YOUTUBE_PLACEHOLDER -->
+            <a class="yt-card placeholder" href="#" target="_blank" rel="noopener">
+                <span class="yt-badge placeholder-badge">▶ 추가 예정</span>
+                <p class="yt-title">영상 제목을 여기에 입력하세요</p>
+                <p class="yt-meta">채널명 · 연도</p>
+                <p class="yt-arrow">영상 보기 →</p>
+            </a>
+        </div>
+    </div>
+
+</div>
+<footer>&copy; 2026 — Built with GitHub Pages</footer>
+</body>
+</html>
