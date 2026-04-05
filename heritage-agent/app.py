@@ -148,6 +148,7 @@ def show_main_app():
                 st.session_state["_identify_key"] = upload_key
                 st.session_state["_identify_result"] = ai_result
                 st.session_state.pop("result", None)
+                st.session_state.pop("historical_img", None)
             else:
                 ai_result = st.session_state.get("_identify_result")
 
@@ -205,18 +206,12 @@ def show_main_app():
                     }
                     save_record(image, place_info, profile["name"], explanation)
 
-                    # 역사 재현 이미지 생성 (페르소나별 스타일)
-                    with st.spinner("🎨 그 시대의 모습을 재현하고 있습니다..."):
-                        historical_img = generate_historical_image(
-                            image, place_name, place_info["location"], voice_key
-                        )
-
                     st.session_state["result"] = {
                         "place_name": place_name,
                         "location": place_info["location"],
                         "explanation": explanation,
                         "mp3_bytes": mp3_bytes,
-                        "historical_img": historical_img,
+                        "voice_key": voice_key,
                     }
 
                 # 결과 표시
@@ -227,9 +222,19 @@ def show_main_app():
                     st.subheader(f"📍 {result['place_name']}{location_str}")
                     st.write(result["explanation"])
                     st.audio(result["mp3_bytes"], format="audio/mp3")
+                    st.success("✅ 방문 기록이 저장되었습니다!")
+
+                    # 역사 재현 버튼
+                    if st.button("🎨 그 시대의 모습 재현하기", use_container_width=True):
+                        with st.spinner("🎨 그 시대의 모습을 재현하고 있습니다..."):
+                            historical_img = generate_historical_image(
+                                image, result["place_name"], result["location"],
+                                result.get("voice_key", "adult_male"),
+                            )
+                        st.session_state["historical_img"] = historical_img
 
                     # 역사 재현 이미지 표시
-                    if result.get("historical_img"):
+                    if st.session_state.get("historical_img"):
                         st.divider()
                         st.subheader("🏛️ 그 시대의 모습")
                         col_now, col_past = st.columns(2)
@@ -238,9 +243,7 @@ def show_main_app():
                             st.image(image, use_container_width=True)
                         with col_past:
                             st.caption("🎨 AI 재현")
-                            st.image(result["historical_img"], use_container_width=True)
-
-                    st.success("✅ 방문 기록이 저장되었습니다!")
+                            st.image(st.session_state["historical_img"], use_container_width=True)
 
     # ── 🗺️ 지도 앨범 탭 ──
     with tab_map:
