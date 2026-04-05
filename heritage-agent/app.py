@@ -8,7 +8,7 @@ from streamlit_folium import st_folium
 from modules.gps_extractor import extract_gps
 from modules.place_matcher import find_nearest_place, load_places
 from modules.persona import build_prompt, PERSONA_LABELS
-from modules.gemini_client import generate_explanation
+from modules.gemini_client import generate_explanation, identify_place
 from modules.tts import text_to_speech
 from modules.storage import save_record, load_all_records
 from modules.map_album import create_map
@@ -37,26 +37,58 @@ with tab_guide:
             horizontal=True,
         )
 
-        # GPS 추출 시도
+        # 장소 자동 인식
+        places = load_places()
+        place_names = [p["name"] for p in places]
+
+        # GPS 추출
         gps = extract_gps(image)
-
-        place_info = None
-
+        gps_match = None
         if gps:
-            place_info = find_nearest_place(gps["lat"], gps["lng"])
-            if place_info:
-                st.info(f"📍 감지된 장소: **{place_info['name']}** ({place_info['distance_m']}m)")
-            else:
-                st.warning("📍 GPS는 감지되었으나 등록된 장소 근처(500m 이내)가 아닙니다. 아래에서 장소를 선택해주세요.")
+            gps_match = find_nearest_place(gps["lat"], gps["lng"])
 
-        if not gps or not place_info:
-            if not gps:
-                st.warning("이 사진에 위치 정보가 없습니다. 장소를 직접 선택해주세요.")
-            places = load_places()
-            place_names = [p["name"] for p in places]
-            selected_name = st.selectbox("장소 선택", place_names)
-            place_info = next(p for p in places if p["name"] == selected_name)
-            place_info["distance_m"] = 0
+        # AI 이미지 인식 (캐싱)
+        upload_key = uploaded.name + str(uploaded.size)
+        if st.session_state.get("_identify_key") != upload_key:
+            with st.spinner("🔍 사진 속 장소를 AI가 분석하고 있습니다..."):
+                ai_result = identify_place(image, place_names)
+            st.session_state["_identify_key"] = upload_key
+            st.session_state["_identify_result"] = ai_result
+        else:
+            ai_result = st.session_state.get("_identify_result")
+
+        # 인식 결과 표시
+        st.subheader("📍 장소 인식 결과")
+
+        if gps_match:
+            st.success(f"🛰️ GPS 감지: **{gps_match['name']}** ({gps_match['distance_m']}m)")
+
+        if ai_result:
+            confidence_emoji = {"높음": "🟢", "보통": "🟡", "낮음": "🔴"}.get(ai_result.get("confidence", ""), "⚪")
+            st.success(
+                f"🤖 AI 인식: **{ai_result['matched']}** "
+                f"{confidence_emoji} 확신도: {ai_result.get('confidence', '알 수 없음')}\n\n"
+                f"근거: {ai_result.get('description', '')}"
+            )
+
+        if not gps_match and not ai_result:
+            st.warning("GPS와 AI 인식 모두 실패했습니다. 아래에서 직접 선택해주세요.")
+
+        # 장소 선택 (추천 결과를 기본값으로)
+        default_name = None
+        if ai_result and ai_result["matched"] in place_names:
+            default_name = ai_result["matched"]
+        elif gps_match:
+            default_name = gps_match["name"]
+
+        default_idx = place_names.index(default_name) if default_name else 0
+        selected_name = st.selectbox(
+            "장소를 확인하거나 변경하세요",
+            place_names,
+            index=default_idx,
+        )
+        place_info = next(p for p in places if p["name"] == selected_name)
+        place_info["distance_m"] = gps_match["distance_m"] if gps_match and gps_match["name"] == selected_name else 0
 
         # 설명 받기 버튼
         if st.button("🔍 설명 받기", type="primary", use_container_width=True):
