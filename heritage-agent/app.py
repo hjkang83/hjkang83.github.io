@@ -58,12 +58,16 @@ with tab_guide:
             confidence_emoji = {"높음": "🟢", "보통": "🟡", "낮음": "🔴"}.get(
                 ai_result.get("confidence", ""), "⚪"
             )
+            coord_str = ""
+            if ai_result.get("lat") and ai_result.get("lng"):
+                coord_str = f"\n\n🗺️ 추정 좌표: ({ai_result['lat']:.4f}, {ai_result['lng']:.4f})"
             st.success(
                 f"🤖 AI 인식: **{ai_result['name']}**\n\n"
                 f"📌 위치: {ai_result.get('location', '알 수 없음')} | "
                 f"🏷️ 분류: {ai_result.get('category', '기타')} | "
                 f"{confidence_emoji} 확신도: {ai_result.get('confidence', '알 수 없음')}\n\n"
                 f"💡 근거: {ai_result.get('description', '')}"
+                f"{coord_str}"
             )
 
             # 장소명 수정 가능
@@ -87,13 +91,21 @@ with tab_guide:
                 with st.spinner("음성을 생성하고 있습니다..."):
                     mp3_bytes = text_to_speech(explanation)
 
+                # 좌표 결정: GPS 우선 → AI 추정 좌표 fallback
+                if gps:
+                    lat, lng = gps["lat"], gps["lng"]
+                elif ai_result and ai_result.get("lat") and ai_result.get("lng"):
+                    lat, lng = ai_result["lat"], ai_result["lng"]
+                else:
+                    lat, lng = 0, 0
+
                 # 저장용 place_info 구성
                 place_info = {
                     "name": place_name,
                     "location": ai_result.get("location", "") if ai_result else "",
                     "category": ai_result.get("category", "기타") if ai_result else "기타",
-                    "lat": gps["lat"] if gps else 0,
-                    "lng": gps["lng"] if gps else 0,
+                    "lat": lat,
+                    "lng": lng,
                 }
                 save_record(image, place_info, persona_key, explanation)
 
@@ -129,6 +141,13 @@ with tab_map:
                 f"{rec['date']} - {rec['place_name']}{location_str} "
                 f"({PERSONA_LABELS.get(rec['persona'], rec['persona'])})"
             ):
+                # 저장된 사진 표시
+                import os
+                photo_path = os.path.join(
+                    os.path.dirname(__file__), "user_data", "photos", rec.get("photo_filename", "")
+                )
+                if os.path.exists(photo_path):
+                    st.image(photo_path, use_container_width=True)
                 st.write(rec["ai_explanation"])
     else:
         st.info("아직 방문 기록이 없습니다. 가이드 탭에서 사진을 올려보세요!")

@@ -34,15 +34,15 @@ def generate_explanation(image, prompt):
 
 
 def identify_place(image, gps_info=None):
-    """사진 속 건물/랜드마크를 Gemini로 인식한다.
+    """사진 속 건물/랜드마크를 Gemini로 인식하고 좌표도 추정한다.
 
     Args:
         image: PIL Image 객체
         gps_info: {"lat": float, "lng": float} 또는 None
 
     Returns:
-        {"name": "건물이름", "location": "도시/국가", "confidence": "높음/보통/낮음",
-         "description": "인식 근거", "category": "분류"}
+        {"name": str, "location": str, "confidence": str,
+         "description": str, "category": str, "lat": float, "lng": float}
         또는 인식 실패 시 None
     """
     gps_hint = ""
@@ -56,6 +56,8 @@ def identify_place(image, gps_info=None):
         "반드시 아래 형식으로만 답해줘 (다른 말 하지 마):\n"
         "이름: [건물/장소의 공식 명칭]\n"
         "위치: [도시, 국가]\n"
+        "위도: [숫자, 예: 37.4419]\n"
+        "경도: [숫자, 예: -122.1430]\n"
         "분류: [대학, 종교건축, 궁전, 유적지, 현대건축, 탑, 다리, 기념물, 기타 중 택1]\n"
         "확신도: [높음/보통/낮음]\n"
         "근거: [사진에서 어떤 특징을 보고 판단했는지 한 줄로]"
@@ -72,6 +74,16 @@ def identify_place(image, gps_info=None):
                 result["name"] = line.replace("이름:", "").strip()
             elif line.startswith("위치:"):
                 result["location"] = line.replace("위치:", "").strip()
+            elif line.startswith("위도:"):
+                try:
+                    result["lat"] = float(line.replace("위도:", "").strip())
+                except ValueError:
+                    pass
+            elif line.startswith("경도:"):
+                try:
+                    result["lng"] = float(line.replace("경도:", "").strip())
+                except ValueError:
+                    pass
             elif line.startswith("분류:"):
                 result["category"] = line.replace("분류:", "").strip()
             elif line.startswith("확신도:"):
