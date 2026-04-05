@@ -7,7 +7,7 @@ from streamlit_folium import st_folium
 
 from modules.gps_extractor import extract_gps
 from modules.persona import build_prompt, get_voice_key
-from modules.gemini_client import generate_explanation, identify_place
+from modules.gemini_client import generate_explanation, identify_place, generate_historical_image
 from modules.tts import text_to_speech
 from modules.storage import (
     save_record, load_all_records,
@@ -205,11 +205,18 @@ def show_main_app():
                     }
                     save_record(image, place_info, profile["name"], explanation)
 
+                    # 역사 재현 이미지 생성
+                    with st.spinner("🎨 그 시대의 모습을 재현하고 있습니다..."):
+                        historical_img = generate_historical_image(
+                            image, place_name, place_info["location"]
+                        )
+
                     st.session_state["result"] = {
                         "place_name": place_name,
                         "location": place_info["location"],
                         "explanation": explanation,
                         "mp3_bytes": mp3_bytes,
+                        "historical_img": historical_img,
                     }
 
                 # 결과 표시
@@ -220,6 +227,19 @@ def show_main_app():
                     st.subheader(f"📍 {result['place_name']}{location_str}")
                     st.write(result["explanation"])
                     st.audio(result["mp3_bytes"], format="audio/mp3")
+
+                    # 역사 재현 이미지 표시
+                    if result.get("historical_img"):
+                        st.divider()
+                        st.subheader("🏛️ 그 시대의 모습")
+                        col_now, col_past = st.columns(2)
+                        with col_now:
+                            st.caption("📸 현재")
+                            st.image(image, use_container_width=True)
+                        with col_past:
+                            st.caption("🎨 AI 재현")
+                            st.image(result["historical_img"], use_container_width=True)
+
                     st.success("✅ 방문 기록이 저장되었습니다!")
 
     # ── 🗺️ 지도 앨범 탭 ──

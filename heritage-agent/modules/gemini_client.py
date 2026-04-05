@@ -1,8 +1,12 @@
-"""Gemini API 호출 모듈 - 전세계 건물/랜드마크 인식 및 설명 생성."""
+"""Gemini API 호출 모듈 - 전세계 건물/랜드마크 인식, 설명 생성, 역사 이미지 재현."""
 
 import os
+from io import BytesIO
 
 import google.generativeai as genai
+from google import genai as genai2
+from google.genai import types as genai2_types
+from PIL import Image as PILImage
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,8 +23,12 @@ if not _API_KEY:
 
 if _API_KEY:
     genai.configure(api_key=_API_KEY)
+    _genai2_client = genai2.Client(api_key=_API_KEY)
+else:
+    _genai2_client = None
 
 MODEL_NAME = "gemini-2.5-flash"
+IMAGE_MODEL_NAME = "gemini-2.0-flash-exp"
 
 
 def generate_explanation(image, prompt):
@@ -93,6 +101,52 @@ def identify_place(image, gps_info=None):
 
         if "name" in result:
             return result
+        return None
+    except Exception:
+        return None
+
+
+def generate_historical_image(image, place_name, place_location=""):
+    """현재 사진을 기반으로 그 시대의 모습을 재현한 이미지를 생성한다.
+
+    Args:
+        image: PIL Image 객체 (현재 사진)
+        place_name: 건물/장소 이름
+        place_location: 위치 정보
+
+    Returns:
+        PIL Image 객체 (생성된 역사 재현 이미지) 또는 None
+    """
+    if not _genai2_client:
+        return None
+
+    location_info = f" in {place_location}" if place_location else ""
+
+    prompt = (
+        f"Based on this photo of {place_name}{location_info}, "
+        f"generate a realistic historical image showing what this exact place "
+        f"looked like during its peak historical period or when it was first built. "
+        f"Keep the same angle and composition as the original photo. "
+        f"Show the building in its original glory with period-appropriate surroundings, "
+        f"people in historical clothing, and the atmosphere of that era. "
+        f"Make it photorealistic and historically accurate."
+    )
+
+    try:
+        response = _genai2_client.models.generate_content(
+            model=IMAGE_MODEL_NAME,
+            contents=[prompt, image],
+            config=genai2_types.GenerateContentConfig(
+                response_modalities=["IMAGE", "TEXT"],
+            ),
+        )
+
+        # 응답에서 이미지 파트 추출
+        for part in response.candidates[0].content.parts:
+            if part.inline_data and part.inline_data.mime_type.startswith("image/"):
+                img_bytes = part.inline_data.data
+                return PILImage.open(BytesIO(img_bytes))
+
         return None
     except Exception:
         return None
