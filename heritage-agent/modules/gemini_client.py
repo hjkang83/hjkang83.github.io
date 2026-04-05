@@ -7,7 +7,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_API_KEY = os.getenv("GEMINI_API_KEY")
+# Streamlit Cloud: st.secrets / 로컬: .env
+try:
+    import streamlit as st
+    _API_KEY = st.secrets.get("GEMINI_API_KEY")
+except Exception:
+    _API_KEY = None
+
+if not _API_KEY:
+    _API_KEY = os.getenv("GEMINI_API_KEY")
+
 if _API_KEY:
     genai.configure(api_key=_API_KEY)
 
