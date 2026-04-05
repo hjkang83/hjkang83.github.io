@@ -1,4 +1,4 @@
-"""On-Go: 홍릉/의릉 AI 유적지 가이드 메인 앱."""
+"""On-Go (to Heritage): Heritage AI Tour Guide Agent."""
 
 import os
 import streamlit as st
@@ -15,9 +15,9 @@ from modules.map_album import create_map
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
-st.set_page_config(page_title="On-Go", layout="centered")
-st.title("On-Go")
-st.caption("홍릉/의릉 AI 유적지 가이드")
+st.set_page_config(page_title="On-Go (to Heritage)", layout="centered")
+st.title("On-Go (to Heritage)")
+st.caption("Heritage AI Tour Guide Agent")
 
 tab_guide, tab_map = st.tabs(["📸 가이드", "🗺️ 지도 앨범"])
 
