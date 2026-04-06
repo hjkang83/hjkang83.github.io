@@ -5,4 +5,5 @@ Pillow
 folium
 streamlit-folium
 edge-tts
+gTTS
 python-dotenv
