@@ -1,9 +1,12 @@
-"""방문 기록 저장/불러오기 모듈 - 전세계 장소 대응."""
+"""방문 기록 저장/불러오기 모듈 - 글로벌 캐시로 리붓에도 복원 가능."""
 
+import base64
 import json
 import os
 from datetime import datetime
+from io import BytesIO
 
+import streamlit as st
 from PIL import Image
 
 BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "user_data")
@@ -16,19 +19,40 @@ def _ensure_dirs():
     os.makedirs(PHOTOS_DIR, exist_ok=True)
 
 
-def _load_json():
-    _ensure_dirs()
-    if not os.path.exists(RECORDS_PATH):
-        return {"records": []}
-    with open(RECORDS_PATH, encoding="utf-8") as f:
-        return json.load(f)
+# ── 글로벌 캐시 (리붓 전까지 모든 세션 공유) ──
+
+@st.cache_resource
+def _get_global_store():
+    """앱 전체에서 공유되는 글로벌 저장소. 리붓 전까지 유지."""
+    return {
+        "records": {"records": []},
+        "profiles": {"profiles": []},
+        "photos": {},  # {filename: base64_str}
+    }
 
 
-def _save_json(data):
+def _sync_from_disk():
+    """디스크에 파일이 있으면 글로벌 캐시로 로드."""
+    store = _get_global_store()
+    if os.path.exists(RECORDS_PATH) and not store["records"]["records"]:
+        with open(RECORDS_PATH, encoding="utf-8") as f:
+            store["records"] = json.load(f)
+    if os.path.exists(PROFILES_PATH) and not store["profiles"]["profiles"]:
+        with open(PROFILES_PATH, encoding="utf-8") as f:
+            store["profiles"] = json.load(f)
+
+
+def _save_to_disk():
+    """글로벌 캐시를 디스크에도 백업."""
     _ensure_dirs()
+    store = _get_global_store()
     with open(RECORDS_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        json.dump(store["records"], f, ensure_ascii=False, indent=2)
+    with open(PROFILES_PATH, "w", encoding="utf-8") as f:
+        json.dump(store["profiles"], f, ensure_ascii=False, indent=2)
 
+
+# ── 방문 기록 ──
 
 def _generate_record_id(data):
     today = datetime.now().strftime("%Y%m%d")
@@ -39,28 +63,28 @@ def _generate_record_id(data):
 
 
 def save_record(photo, place_info, persona, explanation):
-    """방문 기록을 저장한다.
-
-    Args:
-        photo: PIL Image 객체
-        place_info: {"name": str, "location": str, "category": str, "lat": float, "lng": float}
-        persona: 페르소나 키
-        explanation: AI가 생성한 설명 텍스트
-
-    Returns:
-        저장된 record dict
-    """
-    data = _load_json()
+    """방문 기록을 저장한다."""
+    _sync_from_disk()
+    store = _get_global_store()
+    data = store["records"]
     record_id = _generate_record_id(data)
     now = datetime.now()
 
-    # 사진을 가로 800px로 리사이즈하여 저장
+    # 사진을 가로 800px로 리사이즈
     width = 800
     ratio = width / photo.width
     height = int(photo.height * ratio)
     resized = photo.resize((width, height), Image.LANCZOS)
+
+    # 디스크 저장
+    _ensure_dirs()
     photo_filename = f"{record_id}.jpg"
     resized.save(os.path.join(PHOTOS_DIR, photo_filename), "JPEG", quality=85)
+
+    # 글로벌 캐시에 사진 base64로 저장 (리붓 후에도 사용 가능)
+    buf = BytesIO()
+    resized.save(buf, format="JPEG", quality=85)
+    store["photos"][photo_filename] = base64.b64encode(buf.getvalue()).decode("utf-8")
 
     record = {
         "id": record_id,
@@ -77,13 +101,14 @@ def save_record(photo, place_info, persona, explanation):
     }
 
     data["records"].append(record)
-    _save_json(data)
+    _save_to_disk()
     return record
 
 
 def load_all_records():
-    data = _load_json()
-    return data["records"]
+    _sync_from_disk()
+    store = _get_global_store()
+    return store["records"]["records"]
 
 
 def load_records_by_place(place_name):
@@ -91,43 +116,77 @@ def load_records_by_place(place_name):
     return [r for r in records if r["place_name"] == place_name]
 
 
+def get_photo_base64(photo_filename):
+    """사진의 base64 데이터를 반환한다. 캐시 또는 디스크에서."""
+    store = _get_global_store()
+    if photo_filename in store["photos"]:
+        return store["photos"][photo_filename]
+    path = os.path.join(PHOTOS_DIR, photo_filename)
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("utf-8")
+        store["photos"][photo_filename] = b64
+        return b64
+    return None
+
+
 # ── 프로필 관리 ──
 
-def _load_profiles_json():
-    _ensure_dirs()
-    if not os.path.exists(PROFILES_PATH):
-        return {"profiles": []}
-    with open(PROFILES_PATH, encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _save_profiles_json(data):
-    _ensure_dirs()
-    with open(PROFILES_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-
 def save_profile(profile):
-    """프로필을 저장한다. 같은 이름이면 업데이트.
-
-    Args:
-        profile: {"name": str, "age": int, "gender": str, "mbti": str, "expert_mode": bool}
-    """
-    data = _load_profiles_json()
+    _sync_from_disk()
+    store = _get_global_store()
+    data = store["profiles"]
     existing = [i for i, p in enumerate(data["profiles"]) if p["name"] == profile["name"]]
     if existing:
         data["profiles"][existing[0]] = profile
     else:
         data["profiles"].append(profile)
-    _save_profiles_json(data)
+    _save_to_disk()
 
 
 def load_all_profiles():
-    data = _load_profiles_json()
-    return data["profiles"]
+    _sync_from_disk()
+    store = _get_global_store()
+    return store["profiles"]["profiles"]
 
 
 def delete_profile(name):
-    data = _load_profiles_json()
+    _sync_from_disk()
+    store = _get_global_store()
+    data = store["profiles"]
     data["profiles"] = [p for p in data["profiles"] if p["name"] != name]
-    _save_profiles_json(data)
+    _save_to_disk()
+
+
+# ── 내보내기/가져오기 (리붓 후 복원용) ──
+
+def export_all_data():
+    """모든 데이터를 JSON으로 내보낸다."""
+    _sync_from_disk()
+    store = _get_global_store()
+    return json.dumps({
+        "records": store["records"],
+        "profiles": store["profiles"],
+        "photos": store["photos"],
+    }, ensure_ascii=False, indent=2)
+
+
+def import_all_data(json_str):
+    """JSON 데이터를 가져와서 복원한다."""
+    imported = json.loads(json_str)
+    store = _get_global_store()
+
+    if "records" in imported:
+        store["records"] = imported["records"]
+    if "profiles" in imported:
+        store["profiles"] = imported["profiles"]
+    if "photos" in imported:
+        store["photos"] = imported["photos"]
+        # 사진 파일도 디스크에 복원
+        _ensure_dirs()
+        for filename, b64 in imported["photos"].items():
+            path = os.path.join(PHOTOS_DIR, filename)
+            with open(path, "wb") as f:
+                f.write(base64.b64decode(b64))
+
+    _save_to_disk()

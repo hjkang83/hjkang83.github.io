@@ -28,7 +28,7 @@ else:
     _genai2_client = None
 
 MODEL_NAME = "gemini-2.5-flash"
-IMAGE_MODEL_NAME = "gemini-2.0-flash-exp"
+IMAGE_MODEL_NAME = "gemini-2.0-flash-preview-image-generation"
 
 
 def generate_explanation(image, prompt):

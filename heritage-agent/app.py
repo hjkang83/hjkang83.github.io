@@ -12,6 +12,7 @@ from modules.tts import text_to_speech
 from modules.storage import (
     save_record, load_all_records,
     save_profile, load_all_profiles, delete_profile,
+    export_all_data, import_all_data,
 )
 from modules.map_album import create_map
 
@@ -278,6 +279,32 @@ def show_main_app():
                     st.write(rec["ai_explanation"])
         else:
             st.info("아직 방문 기록이 없습니다. 가이드 탭에서 사진을 올려보세요!")
+
+        # 데이터 내보내기/가져오기
+        st.divider()
+        st.subheader("💾 데이터 백업")
+        col_export, col_import = st.columns(2)
+        with col_export:
+            data_json = export_all_data()
+            st.download_button(
+                "📥 데이터 내보내기",
+                data=data_json,
+                file_name="on-go_backup.json",
+                mime="application/json",
+                use_container_width=True,
+            )
+        with col_import:
+            uploaded_backup = st.file_uploader(
+                "📤 데이터 가져오기",
+                type=["json"],
+                key="backup_upload",
+                label_visibility="collapsed",
+            )
+            if uploaded_backup:
+                if st.button("📤 복원하기", use_container_width=True):
+                    import_all_data(uploaded_backup.read().decode("utf-8"))
+                    st.success("✅ 데이터가 복원되었습니다!")
+                    st.rerun()
 
 
 # ── 라우팅 ──
