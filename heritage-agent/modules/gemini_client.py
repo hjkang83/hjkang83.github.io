@@ -23,7 +23,7 @@ if not _API_KEY:
 
 if _API_KEY:
     genai.configure(api_key=_API_KEY)
-    _genai2_client = genai2.Client(api_key=_API_KEY)
+    _genai2_client = genai2.Client(api_key=_API_KEY, http_options={"api_version": "v1alpha"})
 else:
     _genai2_client = None
 
