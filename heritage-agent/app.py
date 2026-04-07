@@ -7,7 +7,7 @@ from streamlit_folium import st_folium
 
 from modules.gps_extractor import extract_gps
 from modules.persona import build_prompt, get_voice_key
-from modules.gemini_client import generate_explanation, identify_place, generate_historical_image
+from modules.gemini_client import generate_explanation, identify_place
 from modules.tts import text_to_speech
 from modules.storage import (
     save_record, load_all_records,
@@ -197,8 +197,6 @@ def show_main_app():
                 st.session_state["_identify_key"] = upload_key
                 st.session_state["_identify_result"] = ai_result
                 st.session_state.pop("result", None)
-                st.session_state.pop("historical_img", None)
-                st.session_state.pop("historical_error", None)
             else:
                 ai_result = st.session_state.get("_identify_result")
 
@@ -273,36 +271,6 @@ def show_main_app():
                     st.write(result["explanation"])
                     st.audio(result["mp3_bytes"], format="audio/mp3")
                     st.success("✅ 방문 기록이 저장되었습니다!")
-
-                    # 역사 재현 버튼
-                    if "historical_img" not in st.session_state:
-                        if st.button("🎨 그 시대의 모습 재현하기", type="primary", use_container_width=True):
-                            with st.spinner("🎨 그 시대의 모습을 재현하고 있습니다..."):
-                                img_result = generate_historical_image(
-                                    image, result["place_name"], result["location"],
-                                    result.get("voice_key", "adult_male"),
-                                )
-                            if isinstance(img_result, dict) and "error" in img_result:
-                                st.session_state["historical_error"] = img_result["error"]
-                            else:
-                                st.session_state["historical_img"] = img_result
-                            st.rerun()
-
-                    # 에러 표시
-                    if st.session_state.get("historical_error"):
-                        st.error(f"⚠️ {st.session_state['historical_error']}")
-
-                    # 역사 재현 이미지 표시
-                    if st.session_state.get("historical_img"):
-                        st.divider()
-                        st.subheader("🏛️ 그 시대의 모습")
-                        col_now, col_past = st.columns(2)
-                        with col_now:
-                            st.caption("📸 현재")
-                            st.image(image, use_container_width=True)
-                        with col_past:
-                            st.caption("🎨 AI 재현")
-                            st.image(st.session_state["historical_img"], use_container_width=True)
 
     # ── 🗺️ 지도 앨범 탭 ──
     with tab_map:

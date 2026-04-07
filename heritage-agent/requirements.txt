@@ -1,6 +1,5 @@
 streamlit
 google-generativeai
-google-genai
 Pillow
 folium
 streamlit-folium
