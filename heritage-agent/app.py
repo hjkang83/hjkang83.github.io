@@ -66,15 +66,63 @@ def show_profile_screen():
                     """,
                     unsafe_allow_html=True,
                 )
-                col_enter, col_del = st.columns(2)
+                col_enter, col_edit, col_del = st.columns(3)
                 with col_enter:
                     if st.button("선택", key=f"select_{i}", use_container_width=True):
                         st.session_state["active_profile"] = prof
+                        st.rerun()
+                with col_edit:
+                    if st.button("수정", key=f"edit_{i}", use_container_width=True):
+                        st.session_state["editing_profile"] = prof
                         st.rerun()
                 with col_del:
                     if st.button("삭제", key=f"delete_{i}", use_container_width=True):
                         delete_profile(prof["name"])
                         st.rerun()
+
+    # 프로필 수정 폼
+    if "editing_profile" in st.session_state:
+        ep = st.session_state["editing_profile"]
+        st.divider()
+        st.subheader(f"✏️ '{ep['name']}' 프로필 수정")
+
+        with st.form("edit_profile_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                edit_name = st.text_input("이름", value=ep["name"])
+                edit_age = st.number_input("나이", min_value=1, max_value=120, value=ep.get("age", 25))
+            with col2:
+                gender_options = ["남성", "여성", "기타"]
+                edit_gender = st.selectbox("성별", gender_options, index=gender_options.index(ep.get("gender", "남성")))
+                mbti_idx = MBTI_LIST.index(ep.get("mbti", "")) if ep.get("mbti", "") in MBTI_LIST else 0
+                edit_mbti = st.selectbox("MBTI (선택사항)", MBTI_LIST, index=mbti_idx)
+            edit_expert = st.checkbox("🎓 전문가 모드 (학술적 심층 설명)", value=ep.get("expert_mode", False))
+
+            col_save, col_cancel = st.columns(2)
+            with col_save:
+                save_clicked = st.form_submit_button("저장", type="primary", use_container_width=True)
+            with col_cancel:
+                cancel_clicked = st.form_submit_button("취소", use_container_width=True)
+
+            if save_clicked:
+                if not edit_name.strip():
+                    st.error("이름을 입력해주세요.")
+                else:
+                    # 기존 프로필 삭제 후 새로 저장
+                    delete_profile(ep["name"])
+                    updated = {
+                        "name": edit_name.strip(),
+                        "age": edit_age,
+                        "gender": edit_gender,
+                        "mbti": edit_mbti,
+                        "expert_mode": edit_expert,
+                    }
+                    save_profile(updated)
+                    st.session_state.pop("editing_profile", None)
+                    st.rerun()
+            if cancel_clicked:
+                st.session_state.pop("editing_profile", None)
+                st.rerun()
 
     # 새 프로필 추가 폼
     st.divider()
