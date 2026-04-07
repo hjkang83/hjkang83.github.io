@@ -10,7 +10,7 @@ from modules.persona import build_prompt, get_voice_key, build_recommendation_co
 from modules.gemini_client import generate_explanation, identify_place, recommend_nearby_places, generate_place_detail
 from modules.tts import text_to_speech
 from modules.storage import (
-    save_record, load_all_records,
+    save_record, load_all_records, load_records_by_persona,
     save_profile, load_all_profiles, delete_profile,
     export_all_data, import_all_data,
 )
@@ -399,18 +399,17 @@ def show_main_app():
 
     # ── 🗺️ 지도 앨범 탭 ──
     with tab_map:
-        records = load_all_records()
-        m = create_map(records)
+        my_records = load_records_by_persona(profile["name"])
+        m = create_map(my_records)
         st_folium(m, width=700, height=500, use_container_width=True)
 
-        if records:
+        if my_records:
             st.divider()
-            st.subheader("📋 방문 기록")
-            for rec in sorted(records, key=lambda r: r["date"] + r["time"], reverse=True):
+            st.subheader(f"📋 {profile['name']}님의 방문 기록")
+            for rec in sorted(my_records, key=lambda r: r["date"] + r["time"], reverse=True):
                 location_str = f" - {rec.get('location', '')}" if rec.get("location") else ""
                 with st.expander(
-                    f"{rec['date']} - {rec['place_name']}{location_str} "
-                    f"({rec.get('persona', '')})"
+                    f"{rec['date']} - {rec['place_name']}{location_str}"
                 ):
                     photo_path = os.path.join(
                         os.path.dirname(__file__), "user_data", "photos", rec.get("photo_filename", "")
@@ -419,7 +418,7 @@ def show_main_app():
                         st.image(photo_path, use_container_width=True)
                     st.write(rec["ai_explanation"])
         else:
-            st.info("아직 방문 기록이 없습니다. 가이드 탭에서 사진을 올려보세요!")
+            st.info(f"{profile['name']}님의 방문 기록이 없습니다. 가이드 탭에서 사진을 올려보세요!")
 
         # 데이터 내보내기/가져오기
         st.divider()

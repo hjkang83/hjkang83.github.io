@@ -111,6 +111,11 @@ def load_all_records():
     return store["records"]["records"]
 
 
+def load_records_by_persona(persona_name):
+    records = load_all_records()
+    return [r for r in records if r.get("persona") == persona_name]
+
+
 def load_records_by_place(place_name):
     records = load_all_records()
     return [r for r in records if r["place_name"] == place_name]
