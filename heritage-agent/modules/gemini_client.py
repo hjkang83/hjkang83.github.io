@@ -96,3 +96,98 @@ def identify_place(image, gps_info=None):
         return None
     except Exception:
         return None
+
+
+def recommend_nearby_places(place_name, place_location, lat, lng, persona_prompt):
+    """현재 장소 주변의 유적지/랜드마크를 페르소나에 맞게 추천한다.
+
+    Args:
+        place_name: 현재 방문 중인 장소 이름
+        place_location: 위치 정보 (도시, 국가)
+        lat: 위도
+        lng: 경도
+        persona_prompt: 페르소나 특성 설명 문자열
+
+    Returns:
+        list of {"name", "location", "category", "lat", "lng",
+                 "distance", "description", "reason", "image_query"}
+        또는 실패 시 빈 리스트
+    """
+    coord_info = ""
+    if lat and lng:
+        coord_info = f"현재 위치 좌표: 위도 {lat:.4f}, 경도 {lng:.4f}\n"
+
+    prompt = (
+        f"사용자가 지금 '{place_name}' ({place_location})을(를) 방문하고 있어.\n"
+        f"{coord_info}\n"
+        f"{persona_prompt}\n\n"
+        "이 장소 근처(같은 도시 또는 반경 30km 이내)에서 이 사용자가 좋아할 만한 "
+        "유적지, 랜드마크, 건축물을 5개 추천해줘.\n"
+        "현재 방문 중인 장소는 제외해.\n\n"
+        "반드시 아래 형식으로만 답해줘 (다른 말 하지 마).\n"
+        "각 추천을 ---로 구분해줘:\n\n"
+        "이름: [장소 공식 명칭]\n"
+        "위치: [도시, 국가]\n"
+        "분류: [대학, 종교건축, 궁전, 유적지, 현대건축, 탑, 다리, 기념물, 박물관, 정원, 기타 중 택1]\n"
+        "위도: [숫자]\n"
+        "경도: [숫자]\n"
+        "거리: [현재 위치에서 대략적 거리, 예: 1.2km]\n"
+        "설명: [이 장소에 대한 2~3문장 소개]\n"
+        "추천이유: [이 사용자에게 특별히 추천하는 이유 1문장]\n"
+        "검색어: [이 장소의 대표 사진을 찾기 위한 영문 검색어]\n"
+        "---"
+    )
+    try:
+        model = genai.GenerativeModel(MODEL_NAME)
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+
+        places = []
+        blocks = text.split("---")
+        for block in blocks:
+            block = block.strip()
+            if not block:
+                continue
+            place = {}
+            for line in block.split("\n"):
+                line = line.strip()
+                if line.startswith("이름:"):
+                    place["name"] = line.replace("이름:", "").strip()
+                elif line.startswith("위치:"):
+                    place["location"] = line.replace("위치:", "").strip()
+                elif line.startswith("분류:"):
+                    place["category"] = line.replace("분류:", "").strip()
+                elif line.startswith("위도:"):
+                    try:
+                        place["lat"] = float(line.replace("위도:", "").strip())
+                    except ValueError:
+                        pass
+                elif line.startswith("경도:"):
+                    try:
+                        place["lng"] = float(line.replace("경도:", "").strip())
+                    except ValueError:
+                        pass
+                elif line.startswith("거리:"):
+                    place["distance"] = line.replace("거리:", "").strip()
+                elif line.startswith("설명:"):
+                    place["description"] = line.replace("설명:", "").strip()
+                elif line.startswith("추천이유:"):
+                    place["reason"] = line.replace("추천이유:", "").strip()
+                elif line.startswith("검색어:"):
+                    place["image_query"] = line.replace("검색어:", "").strip()
+            if "name" in place:
+                places.append(place)
+
+        return places[:5]
+    except Exception:
+        return []
+
+
+def generate_place_detail(place_name, place_location, prompt):
+    """추천 장소에 대한 상세 설명을 생성한다 (사진 없이 텍스트만)."""
+    try:
+        model = genai.GenerativeModel(MODEL_NAME)
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"⚠️ 설명 생성에 실패했습니다.\n(오류: {e})"

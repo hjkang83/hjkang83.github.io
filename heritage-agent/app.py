@@ -6,8 +6,8 @@ from PIL import Image
 from streamlit_folium import st_folium
 
 from modules.gps_extractor import extract_gps
-from modules.persona import build_prompt, get_voice_key
-from modules.gemini_client import generate_explanation, identify_place
+from modules.persona import build_prompt, get_voice_key, build_recommendation_context, build_detail_prompt
+from modules.gemini_client import generate_explanation, identify_place, recommend_nearby_places, generate_place_detail
 from modules.tts import text_to_speech
 from modules.storage import (
     save_record, load_all_records,
@@ -174,6 +174,10 @@ def show_main_app():
             st.session_state.pop("active_profile", None)
             st.session_state.pop("result", None)
             st.session_state.pop("_identify_key", None)
+            st.session_state.pop("_rec_key", None)
+            st.session_state.pop("_recommendations", None)
+            st.session_state.pop("_selected_rec", None)
+            st.session_state.pop("_rec_detail", None)
             st.rerun()
 
     tab_guide, tab_map = st.tabs(["📸 가이드", "🗺️ 지도 앨범"])
@@ -261,6 +265,12 @@ def show_main_app():
                         "mp3_bytes": mp3_bytes,
                         "voice_key": voice_key,
                     }
+                    st.session_state["_result_lat"] = lat
+                    st.session_state["_result_lng"] = lng
+                    st.session_state.pop("_rec_key", None)
+                    st.session_state.pop("_recommendations", None)
+                    st.session_state.pop("_selected_rec", None)
+                    st.session_state.pop("_rec_detail", None)
 
                 # 결과 표시
                 if "result" in st.session_state:
@@ -271,6 +281,121 @@ def show_main_app():
                     st.write(result["explanation"])
                     st.audio(result["mp3_bytes"], format="audio/mp3")
                     st.success("✅ 방문 기록이 저장되었습니다!")
+
+                    # ── 주변 유적지 추천 ──
+                    st.divider()
+                    st.subheader("🧭 주변 추천 유적지")
+
+                    # 추천 로드 (캐싱)
+                    rec_key = f"recs_{result['place_name']}"
+                    if st.session_state.get("_rec_key") != rec_key:
+                        with st.spinner("주변 유적지를 찾고 있습니다..."):
+                            persona_ctx = build_recommendation_context(profile)
+                            # 좌표는 result에서 가져옴
+                            r_lat = st.session_state.get("_result_lat", 0)
+                            r_lng = st.session_state.get("_result_lng", 0)
+                            recs = recommend_nearby_places(
+                                result["place_name"],
+                                result.get("location", ""),
+                                r_lat, r_lng,
+                                persona_ctx,
+                            )
+                        st.session_state["_rec_key"] = rec_key
+                        st.session_state["_recommendations"] = recs
+                        st.session_state.pop("_selected_rec", None)
+                        st.session_state.pop("_rec_detail", None)
+
+                    recs = st.session_state.get("_recommendations", [])
+
+                    if recs:
+                        CATEGORY_ICONS = {
+                            "대학": "🎓", "종교건축": "⛪", "궁전": "🏰",
+                            "유적지": "🏛️", "현대건축": "🏢", "탑": "🗼",
+                            "다리": "🌉", "기념물": "🗽", "박물관": "🏛️",
+                            "정원": "🌳", "기타": "📍",
+                        }
+                        for idx, rec in enumerate(recs):
+                            cat_icon = CATEGORY_ICONS.get(rec.get("category", ""), "📍")
+                            dist_str = f" | 📏 {rec['distance']}" if rec.get("distance") else ""
+                            with st.container():
+                                st.markdown(
+                                    f"""
+                                    <div style="padding:12px; border:1px solid #444;
+                                                border-radius:10px; margin-bottom:8px;">
+                                        <div style="font-size:18px; font-weight:bold;">
+                                            {cat_icon} {rec['name']}
+                                        </div>
+                                        <div style="font-size:13px; color:#aaa; margin:4px 0;">
+                                            📌 {rec.get('location', '')}{dist_str}
+                                        </div>
+                                        <div style="font-size:14px; margin:6px 0;">
+                                            {rec.get('description', '')}
+                                        </div>
+                                        <div style="font-size:13px; color:#4CAF50;">
+                                            💡 {rec.get('reason', '')}
+                                        </div>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True,
+                                )
+                                if st.button(
+                                    f"📖 자세히 보기",
+                                    key=f"rec_detail_{idx}",
+                                    use_container_width=True,
+                                ):
+                                    st.session_state["_selected_rec"] = idx
+                                    st.session_state.pop("_rec_detail", None)
+                                    st.rerun()
+
+                        # 선택된 추천 장소 상세 보기
+                        if "_selected_rec" in st.session_state:
+                            sel_idx = st.session_state["_selected_rec"]
+                            sel = recs[sel_idx]
+                            st.divider()
+                            cat_icon = CATEGORY_ICONS.get(sel.get("category", ""), "📍")
+                            st.subheader(f"{cat_icon} {sel['name']}")
+                            st.caption(f"📌 {sel.get('location', '')} | 🏷️ {sel.get('category', '기타')}")
+
+                            # 상세 설명 생성
+                            if "_rec_detail" not in st.session_state:
+                                with st.spinner("상세 설명을 준비하고 있습니다..."):
+                                    detail_prompt = build_detail_prompt(
+                                        profile, sel["name"], sel.get("location", "")
+                                    )
+                                    detail_text = generate_place_detail(
+                                        sel["name"], sel.get("location", ""), detail_prompt
+                                    )
+                                    detail_mp3 = text_to_speech(detail_text, voice_key)
+                                st.session_state["_rec_detail"] = {
+                                    "text": detail_text,
+                                    "mp3": detail_mp3,
+                                }
+
+                            detail = st.session_state["_rec_detail"]
+                            st.write(detail["text"])
+                            st.audio(detail["mp3"], format="audio/mp3")
+
+                            # 지도에 위치 표시
+                            if sel.get("lat") and sel.get("lng"):
+                                import folium
+                                rec_map = folium.Map(
+                                    location=[sel["lat"], sel["lng"]], zoom_start=15
+                                )
+                                folium.Marker(
+                                    [sel["lat"], sel["lng"]],
+                                    popup=sel["name"],
+                                    tooltip=sel["name"],
+                                    icon=folium.Icon(color="red", icon="info-sign"),
+                                ).add_to(rec_map)
+                                st_folium(rec_map, width=700, height=300,
+                                          use_container_width=True, key="rec_map")
+
+                            if st.button("🔙 추천 목록으로 돌아가기", use_container_width=True):
+                                st.session_state.pop("_selected_rec", None)
+                                st.session_state.pop("_rec_detail", None)
+                                st.rerun()
+                    else:
+                        st.info("주변 추천 장소를 찾지 못했습니다.")
 
     # ── 🗺️ 지도 앨범 탭 ──
     with tab_map:
