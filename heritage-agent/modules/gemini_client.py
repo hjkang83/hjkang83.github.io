@@ -183,11 +183,60 @@ def recommend_nearby_places(place_name, place_location, lat, lng, persona_prompt
         return []
 
 
-def generate_place_detail(place_name, place_location, prompt):
-    """추천 장소에 대한 상세 설명을 생성한다 (사진 없이 텍스트만)."""
+def fetch_place_image(query):
+    """Wikipedia에서 장소 사진 URL을 가져온다.
+
+    Args:
+        query: 영문 검색어 (예: "Gyeongbokgung Palace")
+
+    Returns:
+        이미지 URL 문자열 또는 None
+    """
+    import urllib.request
+    import urllib.parse
+    import json
+
     try:
-        model = genai.GenerativeModel(MODEL_NAME)
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        return f"⚠️ 설명 생성에 실패했습니다.\n(오류: {e})"
+        # Wikipedia 검색으로 페이지 찾기
+        search_url = (
+            "https://en.wikipedia.org/w/api.php?"
+            + urllib.parse.urlencode({
+                "action": "query",
+                "list": "search",
+                "srsearch": query,
+                "srlimit": 1,
+                "format": "json",
+            })
+        )
+        with urllib.request.urlopen(search_url, timeout=5) as resp:
+            search_data = json.loads(resp.read())
+
+        results = search_data.get("query", {}).get("search", [])
+        if not results:
+            return None
+
+        title = results[0]["title"]
+
+        # 해당 페이지의 대표 이미지 가져오기
+        image_url = (
+            "https://en.wikipedia.org/w/api.php?"
+            + urllib.parse.urlencode({
+                "action": "query",
+                "titles": title,
+                "prop": "pageimages",
+                "format": "json",
+                "pithumbsize": 600,
+            })
+        )
+        with urllib.request.urlopen(image_url, timeout=5) as resp:
+            image_data = json.loads(resp.read())
+
+        pages = image_data.get("query", {}).get("pages", {})
+        for page in pages.values():
+            thumb = page.get("thumbnail", {}).get("source")
+            if thumb:
+                return thumb
+
+        return None
+    except Exception:
+        return None

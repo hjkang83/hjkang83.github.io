@@ -6,8 +6,8 @@ from PIL import Image
 from streamlit_folium import st_folium
 
 from modules.gps_extractor import extract_gps
-from modules.persona import build_prompt, get_voice_key, build_recommendation_context, build_detail_prompt
-from modules.gemini_client import generate_explanation, identify_place, recommend_nearby_places, generate_place_detail
+from modules.persona import build_prompt, get_voice_key, build_recommendation_context
+from modules.gemini_client import generate_explanation, identify_place, recommend_nearby_places, fetch_place_image
 from modules.tts import text_to_speech
 from modules.storage import (
     save_record, load_all_records, load_records_by_persona,
@@ -177,7 +177,6 @@ def show_main_app():
             st.session_state.pop("_rec_key", None)
             st.session_state.pop("_recommendations", None)
             st.session_state.pop("_selected_rec", None)
-            st.session_state.pop("_rec_detail", None)
             st.rerun()
 
     tab_guide, tab_map = st.tabs(["📸 가이드", "🗺️ 지도 앨범"])
@@ -270,8 +269,7 @@ def show_main_app():
                     st.session_state.pop("_rec_key", None)
                     st.session_state.pop("_recommendations", None)
                     st.session_state.pop("_selected_rec", None)
-                    st.session_state.pop("_rec_detail", None)
-
+        
                 # 결과 표시
                 if "result" in st.session_state:
                     result = st.session_state["result"]
@@ -303,8 +301,7 @@ def show_main_app():
                         st.session_state["_rec_key"] = rec_key
                         st.session_state["_recommendations"] = recs
                         st.session_state.pop("_selected_rec", None)
-                        st.session_state.pop("_rec_detail", None)
-
+            
                     recs = st.session_state.get("_recommendations", [])
 
                     if recs:
@@ -344,10 +341,9 @@ def show_main_app():
                                     use_container_width=True,
                                 ):
                                     st.session_state["_selected_rec"] = idx
-                                    st.session_state.pop("_rec_detail", None)
                                     st.rerun()
 
-                        # 선택된 추천 장소 상세 보기
+                        # 선택된 추천 장소 사진 보기
                         if "_selected_rec" in st.session_state:
                             sel_idx = st.session_state["_selected_rec"]
                             sel = recs[sel_idx]
@@ -356,43 +352,22 @@ def show_main_app():
                             st.subheader(f"{cat_icon} {sel['name']}")
                             st.caption(f"📌 {sel.get('location', '')} | 🏷️ {sel.get('category', '기타')}")
 
-                            # 상세 설명 생성
-                            if "_rec_detail" not in st.session_state:
-                                with st.spinner("상세 설명을 준비하고 있습니다..."):
-                                    detail_prompt = build_detail_prompt(
-                                        profile, sel["name"], sel.get("location", "")
-                                    )
-                                    detail_text = generate_place_detail(
-                                        sel["name"], sel.get("location", ""), detail_prompt
-                                    )
-                                    detail_mp3 = text_to_speech(detail_text, voice_key)
-                                st.session_state["_rec_detail"] = {
-                                    "text": detail_text,
-                                    "mp3": detail_mp3,
-                                }
+                            # Wikipedia에서 사진 가져오기
+                            img_cache_key = f"_rec_img_{sel_idx}"
+                            if img_cache_key not in st.session_state:
+                                with st.spinner("사진을 불러오고 있습니다..."):
+                                    query = sel.get("image_query", sel["name"])
+                                    img_url = fetch_place_image(query)
+                                st.session_state[img_cache_key] = img_url
 
-                            detail = st.session_state["_rec_detail"]
-                            st.write(detail["text"])
-                            st.audio(detail["mp3"], format="audio/mp3")
-
-                            # 지도에 위치 표시
-                            if sel.get("lat") and sel.get("lng"):
-                                import folium
-                                rec_map = folium.Map(
-                                    location=[sel["lat"], sel["lng"]], zoom_start=15
-                                )
-                                folium.Marker(
-                                    [sel["lat"], sel["lng"]],
-                                    popup=sel["name"],
-                                    tooltip=sel["name"],
-                                    icon=folium.Icon(color="red", icon="info-sign"),
-                                ).add_to(rec_map)
-                                st_folium(rec_map, width=700, height=300,
-                                          use_container_width=True, key="rec_map")
+                            img_url = st.session_state[img_cache_key]
+                            if img_url:
+                                st.image(img_url, caption=sel["name"], use_container_width=True)
+                            else:
+                                st.info("📷 이 장소의 사진을 찾지 못했습니다.")
 
                             if st.button("🔙 추천 목록으로 돌아가기", use_container_width=True):
                                 st.session_state.pop("_selected_rec", None)
-                                st.session_state.pop("_rec_detail", None)
                                 st.rerun()
                     else:
                         st.info("주변 추천 장소를 찾지 못했습니다.")
