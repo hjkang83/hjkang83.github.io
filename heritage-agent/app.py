@@ -6,13 +6,22 @@ from PIL import Image
 from streamlit_folium import st_folium
 
 from modules.gps_extractor import extract_gps
-from modules.persona import build_prompt, get_voice_key, build_recommendation_context, build_food_recommendation_context
-from modules.gemini_client import generate_explanation, identify_place, recommend_nearby_places, fetch_place_image, recommend_nearby_food
+from modules.persona import (
+    build_prompt, get_voice_key,
+    build_recommendation_context,
+    build_food_recommendation_context,
+    build_activity_recommendation_context,
+)
+from modules.gemini_client import (
+    generate_explanation, identify_place, recommend_nearby_places,
+    fetch_place_image, recommend_nearby_food, recommend_nearby_activities,
+    get_place_media,
+)
 from modules.tts import text_to_speech
 from modules.storage import (
     save_record, load_all_records, load_records_by_persona,
     save_profile, load_all_profiles, delete_profile,
-    export_all_data, import_all_data,
+    export_all_data, import_all_data, _get_gist_config,
 )
 from modules.map_album import create_map
 
@@ -179,9 +188,13 @@ def show_main_app():
             st.session_state.pop("_selected_rec", None)
             st.session_state.pop("_food_key", None)
             st.session_state.pop("_food_recommendations", None)
+            st.session_state.pop("_activity_key", None)
+            st.session_state.pop("_activity_recommendations", None)
             st.rerun()
 
-    tab_guide, tab_food, tab_map = st.tabs(["📸 가이드", "🍽️ 추천 맛집/액티비티", "🗺️ 지도 앨범"])
+    tab_guide, tab_food, tab_activity, tab_map = st.tabs([
+        "📸 가이드", "🍽️ 추천 맛집", "🎡 액티비티", "🗺️ 지도 앨범"
+    ])
 
     # ── 📸 가이드 탭 ──
     with tab_guide:
@@ -273,6 +286,8 @@ def show_main_app():
                     st.session_state.pop("_selected_rec", None)
                     st.session_state.pop("_food_key", None)
                     st.session_state.pop("_food_recommendations", None)
+                    st.session_state.pop("_activity_key", None)
+                    st.session_state.pop("_activity_recommendations", None)
         
                 # 결과 표시
                 if "result" in st.session_state:
@@ -347,7 +362,7 @@ def show_main_app():
                                     st.session_state["_selected_rec"] = idx
                                     st.rerun()
 
-                        # 선택된 추천 장소 사진 보기
+                        # 선택된 추천 장소 미디어 보기
                         if "_selected_rec" in st.session_state:
                             sel_idx = st.session_state["_selected_rec"]
                             sel = recs[sel_idx]
@@ -356,19 +371,36 @@ def show_main_app():
                             st.subheader(f"{cat_icon} {sel['name']}")
                             st.caption(f"📌 {sel.get('location', '')} | 🏷️ {sel.get('category', '기타')}")
 
-                            # Wikipedia에서 사진 가져오기
-                            img_cache_key = f"_rec_img_{sel_idx}"
-                            if img_cache_key not in st.session_state:
-                                with st.spinner("사진을 불러오고 있습니다..."):
+                            # 미디어 (사진 + 블로그 + 유튜브)
+                            media_cache_key = f"_rec_media_{sel_idx}"
+                            if media_cache_key not in st.session_state:
+                                with st.spinner("사진과 리뷰 링크를 찾고 있습니다..."):
                                     query = sel.get("image_query", sel["name"])
-                                    img_url = fetch_place_image(query)
-                                st.session_state[img_cache_key] = img_url
+                                    st.session_state[media_cache_key] = get_place_media(query)
 
-                            img_url = st.session_state[img_cache_key]
-                            if img_url:
-                                st.image(img_url, caption=sel["name"], use_container_width=True)
+                            media = st.session_state[media_cache_key]
+
+                            if media.get("image_url"):
+                                st.image(media["image_url"], caption=sel["name"], use_container_width=True)
                             else:
-                                st.info("📷 이 장소의 사진을 찾지 못했습니다.")
+                                st.markdown(
+                                    f"📷 사진이 Wikipedia에 없습니다. "
+                                    f"[Google 이미지로 검색하기]({media['google_image_url']})"
+                                )
+
+                            col_b, col_y = st.columns(2)
+                            with col_b:
+                                st.link_button(
+                                    "📝 블로그 리뷰 보기",
+                                    media["blog_url"],
+                                    use_container_width=True,
+                                )
+                            with col_y:
+                                st.link_button(
+                                    "🎥 유튜브 리뷰 보기",
+                                    media["youtube_url"],
+                                    use_container_width=True,
+                                )
 
                             if st.button("🔙 추천 목록으로 돌아가기", use_container_width=True):
                                 st.session_state.pop("_selected_rec", None)
@@ -376,7 +408,7 @@ def show_main_app():
                     else:
                         st.info("주변 추천 장소를 찾지 못했습니다.")
 
-    # ── 🍽️ 추천 맛집/액티비티 탭 ──
+    # ── 🍽️ 추천 맛집 탭 ──
     with tab_food:
         if "result" not in st.session_state:
             st.info("👈 먼저 '가이드' 탭에서 사진을 올리고 장소 설명을 받아주세요.\n\n방문 중인 장소 주변의 맛집을 추천해드립니다.")
@@ -440,21 +472,135 @@ def show_main_app():
                         unsafe_allow_html=True,
                     )
 
-                    # 사진 표시 (Wikipedia/Wikimedia)
-                    img_cache_key = f"_food_img_{idx}_{food_key}"
-                    if img_cache_key not in st.session_state:
-                        with st.spinner(f"'{food['name']}' 사진 검색 중..."):
+                    # 미디어 (사진 + 블로그 + 유튜브)
+                    media_cache_key = f"_food_media_{idx}_{food_key}"
+                    if media_cache_key not in st.session_state:
+                        with st.spinner(f"'{food['name']}' 사진/리뷰 검색 중..."):
                             query = food.get("image_query", food["name"])
-                            img_url = fetch_place_image(query)
-                        st.session_state[img_cache_key] = img_url
+                            st.session_state[media_cache_key] = get_place_media(query)
 
-                    img_url = st.session_state[img_cache_key]
-                    if img_url:
-                        st.image(img_url, caption=food["name"], use_container_width=True)
+                    media = st.session_state[media_cache_key]
+                    if media.get("image_url"):
+                        st.image(media["image_url"], caption=food["name"], use_container_width=True)
+                    else:
+                        st.markdown(
+                            f"📷 [Google 이미지로 검색하기]({media['google_image_url']})"
+                        )
+
+                    col_b, col_y = st.columns(2)
+                    with col_b:
+                        st.link_button(
+                            "📝 블로그 리뷰",
+                            media["blog_url"],
+                            use_container_width=True,
+                        )
+                    with col_y:
+                        st.link_button(
+                            "🎥 유튜브 리뷰",
+                            media["youtube_url"],
+                            use_container_width=True,
+                        )
 
                     st.divider()
             else:
                 st.info("주변 맛집을 찾지 못했습니다. 다른 장소를 시도해보세요.")
+
+    # ── 🎡 액티비티 탭 ──
+    with tab_activity:
+        if "result" not in st.session_state:
+            st.info("👈 먼저 '가이드' 탭에서 사진을 올리고 장소 설명을 받아주세요.\n\n방문 중인 장소 주변의 인기 액티비티를 추천해드립니다.")
+        else:
+            result = st.session_state["result"]
+            location_str = f" ({result['location']})" if result.get("location") else ""
+            st.subheader(f"🎡 {result['place_name']}{location_str} 주변 액티비티")
+            st.caption(f"{profile['name']}님께 어울리는 인기 액티비티 3곳을 추천해드려요")
+
+            # 추천 로드 (캐싱)
+            activity_key = f"activity_{result['place_name']}"
+            if st.session_state.get("_activity_key") != activity_key:
+                with st.spinner("주변 인기 액티비티를 찾고 있습니다..."):
+                    activity_persona_ctx = build_activity_recommendation_context(profile)
+                    a_lat = st.session_state.get("_result_lat", 0)
+                    a_lng = st.session_state.get("_result_lng", 0)
+                    activity_recs = recommend_nearby_activities(
+                        result["place_name"],
+                        result.get("location", ""),
+                        a_lat, a_lng,
+                        activity_persona_ctx,
+                    )
+                st.session_state["_activity_key"] = activity_key
+                st.session_state["_activity_recommendations"] = activity_recs
+
+            activity_recs = st.session_state.get("_activity_recommendations", [])
+
+            if activity_recs:
+                ACTIVITY_ICONS = {
+                    "투어": "🚌", "박물관": "🏛️", "공원": "🌳",
+                    "테마파크": "🎢", "전망대": "🌇", "쇼핑": "🛍️",
+                    "체험": "🎨", "스파": "💆", "야경": "🌃",
+                    "공연": "🎭", "기타": "🎡",
+                }
+                DIFFICULTY_ICONS = {"쉬움": "🟢", "보통": "🟡", "활동적": "🔴"}
+
+                for idx, act in enumerate(activity_recs):
+                    act_icon = ACTIVITY_ICONS.get(act.get("category", ""), "🎡")
+                    diff = DIFFICULTY_ICONS.get(act.get("difficulty", ""), "")
+                    duration = act.get("duration", "")
+
+                    st.markdown(
+                        f"""
+                        <div style="padding:14px; border:1px solid #444;
+                                    border-radius:10px; margin-bottom:10px;
+                                    background-color: rgba(100,150,255,0.05);">
+                            <div style="font-size:19px; font-weight:bold;">
+                                {act_icon} {act['name']}
+                            </div>
+                            <div style="font-size:13px; color:#aaa; margin:4px 0;">
+                                🏷️ {act.get('category', '')} | ⏱️ {duration} | {diff} {act.get('difficulty', '')}
+                            </div>
+                            <div style="font-size:14px; margin:8px 0;">
+                                {act.get('description', '')}
+                            </div>
+                            <div style="font-size:13px; color:#6496FF;">
+                                💡 {act.get('reason', '')}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                    # 미디어 (사진 + 블로그 + 유튜브)
+                    media_cache_key = f"_activity_media_{idx}_{activity_key}"
+                    if media_cache_key not in st.session_state:
+                        with st.spinner(f"'{act['name']}' 사진/리뷰 검색 중..."):
+                            query = act.get("image_query", act["name"])
+                            st.session_state[media_cache_key] = get_place_media(query)
+
+                    media = st.session_state[media_cache_key]
+                    if media.get("image_url"):
+                        st.image(media["image_url"], caption=act["name"], use_container_width=True)
+                    else:
+                        st.markdown(
+                            f"📷 [Google 이미지로 검색하기]({media['google_image_url']})"
+                        )
+
+                    col_b, col_y = st.columns(2)
+                    with col_b:
+                        st.link_button(
+                            "📝 블로그 리뷰",
+                            media["blog_url"],
+                            use_container_width=True,
+                        )
+                    with col_y:
+                        st.link_button(
+                            "🎥 유튜브 리뷰",
+                            media["youtube_url"],
+                            use_container_width=True,
+                        )
+
+                    st.divider()
+            else:
+                st.info("주변 액티비티를 찾지 못했습니다. 다른 장소를 시도해보세요.")
 
     # ── 🗺️ 지도 앨범 탭 ──
     with tab_map:
@@ -479,8 +625,19 @@ def show_main_app():
         else:
             st.info(f"{profile['name']}님의 방문 기록이 없습니다. 가이드 탭에서 사진을 올려보세요!")
 
-        # 데이터 내보내기/가져오기
+        # 데이터 저장 상태
         st.divider()
+        token, gist_id = _get_gist_config()
+        if token and gist_id:
+            st.success("☁️ 클라우드 저장(GitHub Gist) 활성화 - 리붓해도 데이터가 유지됩니다")
+        else:
+            st.warning(
+                "⚠️ 클라우드 저장이 설정되지 않았습니다. 앱 재시작 시 데이터가 초기화될 수 있습니다.\n\n"
+                "영구 저장을 원하시면 Streamlit secrets에 `GITHUB_TOKEN`과 `GIST_ID`를 추가하세요. "
+                "(Private Gist 생성 → PAT 발급 시 `gist` 스코프 체크)"
+            )
+
+        # 데이터 내보내기/가져오기
         st.subheader("💾 데이터 백업")
         col_export, col_import = st.columns(2)
         with col_export:

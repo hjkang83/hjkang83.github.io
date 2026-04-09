@@ -180,6 +180,47 @@ def build_recommendation_context(profile):
     return "\n".join(parts)
 
 
+def build_activity_recommendation_context(profile):
+    """액티비티 추천 시스템에 전달할 페르소나 특성 문자열을 생성한다."""
+    name = profile.get("name", "사용자")
+    age = profile.get("age", 25)
+    gender = profile.get("gender", "남성")
+    mbti = profile.get("mbti", "")
+
+    parts = [f"사용자 정보: {name}, {age}세, {gender}"]
+
+    if age <= 12:
+        parts.append("이 사용자는 어린이라 체험형, 놀이공원, 동물원, 수족관 등을 좋아합니다.")
+    elif age <= 18:
+        parts.append("이 사용자는 청소년이라 어드벤처, 스릴 있는 체험, 인기 포토스팟을 좋아합니다.")
+    elif age >= 60:
+        parts.append("활동적이지 않고 여유롭게 즐길 수 있는 정원, 박물관, 전망대 등을 선호합니다.")
+    elif age >= 40:
+        parts.append("힐링형 액티비티(스파, 자연 관람, 문화 체험)를 선호합니다.")
+    else:
+        parts.append("다양한 체험과 볼거리를 좋아하는 연령대입니다.")
+
+    if mbti:
+        mbti_upper = mbti.upper()
+        prefs = []
+        if mbti_upper[0:1] == "E":
+            prefs.append("사람들과 어울리는 활동, 공연, 축제")
+        elif mbti_upper[0:1] == "I":
+            prefs.append("조용한 산책, 박물관, 개인 체험")
+        if "N" in mbti_upper:
+            prefs.append("독특한 경험, 숨은 명소")
+        elif "S" in mbti_upper:
+            prefs.append("인기 명소, 검증된 액티비티")
+        if "P" in mbti_upper:
+            prefs.append("자유롭게 돌아볼 수 있는 곳")
+        elif "J" in mbti_upper:
+            prefs.append("일정이 짜여진 투어나 프로그램")
+        if prefs:
+            parts.append(f"MBTI {mbti} 기반 선호: {', '.join(prefs)}")
+
+    return "\n".join(parts)
+
+
 def build_food_recommendation_context(profile):
     """맛집 추천 시스템에 전달할 페르소나 특성 문자열을 생성한다."""
     name = profile.get("name", "사용자")
