@@ -183,83 +183,27 @@ def recommend_nearby_places(place_name, place_location, lat, lng, persona_prompt
         return []
 
 
-def fetch_place_image(query):
-    """Wikipedia에서 장소 사진 URL을 가져온다.
+def get_place_media(query, location=""):
+    """장소에 대한 네이버 이미지/블로그/지도 검색 URL을 반환한다.
 
     Args:
-        query: 영문 검색어 (예: "Gyeongbokgung Palace")
+        query: 장소 이름 (한글 또는 영문)
+        location: 위치 정보 (예: "서울, 한국") - 지도 검색 정확도 향상용
 
     Returns:
-        이미지 URL 문자열 또는 None
-    """
-    import urllib.request
-    import urllib.parse
-    import json
-
-    try:
-        # Wikipedia 검색으로 페이지 찾기
-        search_url = (
-            "https://en.wikipedia.org/w/api.php?"
-            + urllib.parse.urlencode({
-                "action": "query",
-                "list": "search",
-                "srsearch": query,
-                "srlimit": 1,
-                "format": "json",
-            })
-        )
-        with urllib.request.urlopen(search_url, timeout=5) as resp:
-            search_data = json.loads(resp.read())
-
-        results = search_data.get("query", {}).get("search", [])
-        if not results:
-            return None
-
-        title = results[0]["title"]
-
-        # 해당 페이지의 대표 이미지 가져오기
-        image_url = (
-            "https://en.wikipedia.org/w/api.php?"
-            + urllib.parse.urlencode({
-                "action": "query",
-                "titles": title,
-                "prop": "pageimages",
-                "format": "json",
-                "pithumbsize": 600,
-            })
-        )
-        with urllib.request.urlopen(image_url, timeout=5) as resp:
-            image_data = json.loads(resp.read())
-
-        pages = image_data.get("query", {}).get("pages", {})
-        for page in pages.values():
-            thumb = page.get("thumbnail", {}).get("source")
-            if thumb:
-                return thumb
-
-        return None
-    except Exception:
-        return None
-
-
-def get_place_media(query):
-    """장소/식당에 대한 사진 URL과 블로그/유튜브 검색 링크를 반환한다.
-
-    Args:
-        query: 영문 검색어
-
-    Returns:
-        {"image_url": str or None, "blog_url": str, "youtube_url": str,
-         "google_image_url": str}
+        {"image_search_url": str, "blog_url": str, "map_url": str}
     """
     import urllib.parse
 
     q = urllib.parse.quote(query)
+    # 지도 검색은 위치까지 포함하면 정확도가 높음
+    map_query = f"{query} {location}".strip() if location else query
+    map_q = urllib.parse.quote(map_query)
+
     return {
-        "image_url": fetch_place_image(query),
+        "image_search_url": f"https://search.naver.com/search.naver?where=image&query={q}",
         "blog_url": f"https://search.naver.com/search.naver?where=post&query={q}",
-        "youtube_url": f"https://www.youtube.com/results?search_query={q}+review",
-        "google_image_url": f"https://www.google.com/search?q={q}&tbm=isch",
+        "map_url": f"https://map.naver.com/p/search/{map_q}",
     }
 
 
@@ -278,18 +222,21 @@ def recommend_nearby_activities(place_name, place_location, lat, lng, persona_pr
         f"사용자가 지금 '{place_name}' ({place_location})을(를) 방문하고 있어.\n"
         f"{coord_info}\n"
         f"{persona_prompt}\n\n"
-        "이 장소 근처에서 이 사용자가 즐길 만한 액티비티/체험/투어/공원/테마파크/박물관 등을 3개 추천해줘.\n"
+        "이 장소 근처에서 이 사용자가 즐길 만한 '주변 여행지'와 '액티비티'를 3개 추천해줘.\n"
         "리뷰가 많고 방문자 수가 많은 인기 있는 곳 위주로 추천해줘.\n"
-        "해당 지역에서 실제로 유명한 액티비티여야 해. 맛집은 제외해.\n\n"
+        "해당 지역에서 실제로 유명한 여행지/액티비티여야 해.\n"
+        "⚠️ 중요: 유적지, 궁전, 종교건축, 기념물, 역사적 장소, 박물관은 제외해.\n"
+        "대신 공원, 테마파크, 전망대, 쇼핑 거리, 야경 명소, 테마 거리, 투어(크루즈/버스/자전거), 체험 액티비티, 스파/온천, 공연장, 동물원, 수족관, 놀이공원 등을 추천해.\n"
+        "맛집도 제외해.\n\n"
         "반드시 아래 형식으로만 답해줘 (다른 말 하지 마).\n"
         "각 추천을 ---로 구분해줘:\n\n"
-        "이름: [액티비티/장소 이름]\n"
-        "분류: [투어, 박물관, 공원, 테마파크, 전망대, 쇼핑, 체험, 스파, 야경, 공연, 기타 중 택1]\n"
-        "설명: [이 액티비티의 특징과 경험을 2~3문장으로 소개]\n"
+        "이름: [여행지/액티비티 이름]\n"
+        "분류: [공원, 테마파크, 전망대, 쇼핑, 야경, 테마거리, 투어, 체험, 스파, 공연, 동물원, 수족관, 놀이공원, 기타 중 택1]\n"
+        "설명: [이 장소의 특징과 경험을 2~3문장으로 소개]\n"
         "추천이유: [이 사용자에게 특별히 추천하는 이유 1문장]\n"
         "소요시간: [예상 소요시간, 예: 1~2시간]\n"
         "난이도: [쉬움, 보통, 활동적 중 택1]\n"
-        "검색어: [이 장소의 사진을 찾기 위한 영문 검색어]\n"
+        "검색어: [이 장소의 사진을 찾기 위한 한글 검색어]\n"
         "---"
     )
     try:

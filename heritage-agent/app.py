@@ -14,7 +14,7 @@ from modules.persona import (
 )
 from modules.gemini_client import (
     generate_explanation, identify_place, recommend_nearby_places,
-    fetch_place_image, recommend_nearby_food, recommend_nearby_activities,
+    recommend_nearby_food, recommend_nearby_activities,
     get_place_media,
 )
 from modules.tts import text_to_speech
@@ -371,34 +371,32 @@ def show_main_app():
                             st.subheader(f"{cat_icon} {sel['name']}")
                             st.caption(f"📌 {sel.get('location', '')} | 🏷️ {sel.get('category', '기타')}")
 
-                            # 미디어 (사진 + 블로그 + 유튜브)
+                            # 미디어 (네이버 사진/블로그/지도)
                             media_cache_key = f"_rec_media_{sel_idx}"
                             if media_cache_key not in st.session_state:
-                                with st.spinner("사진과 리뷰 링크를 찾고 있습니다..."):
-                                    query = sel.get("image_query", sel["name"])
-                                    st.session_state[media_cache_key] = get_place_media(query)
+                                query = sel.get("name", "")
+                                loc = sel.get("location", "")
+                                st.session_state[media_cache_key] = get_place_media(query, loc)
 
                             media = st.session_state[media_cache_key]
 
-                            if media.get("image_url"):
-                                st.image(media["image_url"], caption=sel["name"], use_container_width=True)
-                            else:
-                                st.markdown(
-                                    f"📷 사진이 Wikipedia에 없습니다. "
-                                    f"[Google 이미지로 검색하기]({media['google_image_url']})"
+                            col_i, col_b, col_m = st.columns(3)
+                            with col_i:
+                                st.link_button(
+                                    "📷 사진 검색",
+                                    media["image_search_url"],
+                                    use_container_width=True,
                                 )
-
-                            col_b, col_y = st.columns(2)
                             with col_b:
                                 st.link_button(
-                                    "📝 블로그 리뷰 보기",
+                                    "📝 블로그 리뷰",
                                     media["blog_url"],
                                     use_container_width=True,
                                 )
-                            with col_y:
+                            with col_m:
                                 st.link_button(
-                                    "🎥 유튜브 리뷰 보기",
-                                    media["youtube_url"],
+                                    "🗺️ 네이버 지도",
+                                    media["map_url"],
                                     use_container_width=True,
                                 )
 
@@ -472,32 +470,32 @@ def show_main_app():
                         unsafe_allow_html=True,
                     )
 
-                    # 미디어 (사진 + 블로그 + 유튜브)
+                    # 미디어 (네이버 사진/블로그/지도)
                     media_cache_key = f"_food_media_{idx}_{food_key}"
                     if media_cache_key not in st.session_state:
-                        with st.spinner(f"'{food['name']}' 사진/리뷰 검색 중..."):
-                            query = food.get("image_query", food["name"])
-                            st.session_state[media_cache_key] = get_place_media(query)
+                        query = food["name"]
+                        loc = result.get("location", "")
+                        st.session_state[media_cache_key] = get_place_media(query, loc)
 
                     media = st.session_state[media_cache_key]
-                    if media.get("image_url"):
-                        st.image(media["image_url"], caption=food["name"], use_container_width=True)
-                    else:
-                        st.markdown(
-                            f"📷 [Google 이미지로 검색하기]({media['google_image_url']})"
-                        )
 
-                    col_b, col_y = st.columns(2)
+                    col_i, col_b, col_m = st.columns(3)
+                    with col_i:
+                        st.link_button(
+                            "📷 사진 검색",
+                            media["image_search_url"],
+                            use_container_width=True,
+                        )
                     with col_b:
                         st.link_button(
                             "📝 블로그 리뷰",
                             media["blog_url"],
                             use_container_width=True,
                         )
-                    with col_y:
+                    with col_m:
                         st.link_button(
-                            "🎥 유튜브 리뷰",
-                            media["youtube_url"],
+                            "🗺️ 네이버 지도",
+                            media["map_url"],
                             use_container_width=True,
                         )
 
@@ -535,10 +533,11 @@ def show_main_app():
 
             if activity_recs:
                 ACTIVITY_ICONS = {
-                    "투어": "🚌", "박물관": "🏛️", "공원": "🌳",
-                    "테마파크": "🎢", "전망대": "🌇", "쇼핑": "🛍️",
-                    "체험": "🎨", "스파": "💆", "야경": "🌃",
-                    "공연": "🎭", "기타": "🎡",
+                    "공원": "🌳", "테마파크": "🎢", "전망대": "🌇",
+                    "쇼핑": "🛍️", "야경": "🌃", "테마거리": "🛤️",
+                    "투어": "🚌", "체험": "🎨", "스파": "💆",
+                    "공연": "🎭", "동물원": "🦁", "수족관": "🐠",
+                    "놀이공원": "🎠", "기타": "🎡",
                 }
                 DIFFICULTY_ICONS = {"쉬움": "🟢", "보통": "🟡", "활동적": "🔴"}
 
@@ -569,32 +568,32 @@ def show_main_app():
                         unsafe_allow_html=True,
                     )
 
-                    # 미디어 (사진 + 블로그 + 유튜브)
+                    # 미디어 (네이버 사진/블로그/지도)
                     media_cache_key = f"_activity_media_{idx}_{activity_key}"
                     if media_cache_key not in st.session_state:
-                        with st.spinner(f"'{act['name']}' 사진/리뷰 검색 중..."):
-                            query = act.get("image_query", act["name"])
-                            st.session_state[media_cache_key] = get_place_media(query)
+                        query = act["name"]
+                        loc = result.get("location", "")
+                        st.session_state[media_cache_key] = get_place_media(query, loc)
 
                     media = st.session_state[media_cache_key]
-                    if media.get("image_url"):
-                        st.image(media["image_url"], caption=act["name"], use_container_width=True)
-                    else:
-                        st.markdown(
-                            f"📷 [Google 이미지로 검색하기]({media['google_image_url']})"
-                        )
 
-                    col_b, col_y = st.columns(2)
+                    col_i, col_b, col_m = st.columns(3)
+                    with col_i:
+                        st.link_button(
+                            "📷 사진 검색",
+                            media["image_search_url"],
+                            use_container_width=True,
+                        )
                     with col_b:
                         st.link_button(
                             "📝 블로그 리뷰",
                             media["blog_url"],
                             use_container_width=True,
                         )
-                    with col_y:
+                    with col_m:
                         st.link_button(
-                            "🎥 유튜브 리뷰",
-                            media["youtube_url"],
+                            "🗺️ 네이버 지도",
+                            media["map_url"],
                             use_container_width=True,
                         )
 
