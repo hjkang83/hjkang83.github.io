@@ -6,8 +6,8 @@ from PIL import Image
 from streamlit_folium import st_folium
 
 from modules.gps_extractor import extract_gps
-from modules.persona import build_prompt, get_voice_key, build_recommendation_context
-from modules.gemini_client import generate_explanation, identify_place, recommend_nearby_places, fetch_place_image
+from modules.persona import build_prompt, get_voice_key, build_recommendation_context, build_food_recommendation_context
+from modules.gemini_client import generate_explanation, identify_place, recommend_nearby_places, fetch_place_image, recommend_nearby_food
 from modules.tts import text_to_speech
 from modules.storage import (
     save_record, load_all_records, load_records_by_persona,
@@ -177,9 +177,11 @@ def show_main_app():
             st.session_state.pop("_rec_key", None)
             st.session_state.pop("_recommendations", None)
             st.session_state.pop("_selected_rec", None)
+            st.session_state.pop("_food_key", None)
+            st.session_state.pop("_food_recommendations", None)
             st.rerun()
 
-    tab_guide, tab_map = st.tabs(["📸 가이드", "🗺️ 지도 앨범"])
+    tab_guide, tab_food, tab_map = st.tabs(["📸 가이드", "🍽️ 추천 맛집/액티비티", "🗺️ 지도 앨범"])
 
     # ── 📸 가이드 탭 ──
     with tab_guide:
@@ -269,6 +271,8 @@ def show_main_app():
                     st.session_state.pop("_rec_key", None)
                     st.session_state.pop("_recommendations", None)
                     st.session_state.pop("_selected_rec", None)
+                    st.session_state.pop("_food_key", None)
+                    st.session_state.pop("_food_recommendations", None)
         
                 # 결과 표시
                 if "result" in st.session_state:
@@ -371,6 +375,86 @@ def show_main_app():
                                 st.rerun()
                     else:
                         st.info("주변 추천 장소를 찾지 못했습니다.")
+
+    # ── 🍽️ 추천 맛집/액티비티 탭 ──
+    with tab_food:
+        if "result" not in st.session_state:
+            st.info("👈 먼저 '가이드' 탭에서 사진을 올리고 장소 설명을 받아주세요.\n\n방문 중인 장소 주변의 맛집을 추천해드립니다.")
+        else:
+            result = st.session_state["result"]
+            location_str = f" ({result['location']})" if result.get("location") else ""
+            st.subheader(f"🍽️ {result['place_name']}{location_str} 주변 맛집")
+            st.caption(f"{profile['name']}님의 취향에 맞게 인기 맛집 3곳을 추천해드려요")
+
+            # 추천 로드 (캐싱)
+            food_key = f"food_{result['place_name']}"
+            if st.session_state.get("_food_key") != food_key:
+                with st.spinner("주변 인기 맛집을 찾고 있습니다..."):
+                    food_persona_ctx = build_food_recommendation_context(profile)
+                    f_lat = st.session_state.get("_result_lat", 0)
+                    f_lng = st.session_state.get("_result_lng", 0)
+                    food_recs = recommend_nearby_food(
+                        result["place_name"],
+                        result.get("location", ""),
+                        f_lat, f_lng,
+                        food_persona_ctx,
+                    )
+                st.session_state["_food_key"] = food_key
+                st.session_state["_food_recommendations"] = food_recs
+
+            food_recs = st.session_state.get("_food_recommendations", [])
+
+            if food_recs:
+                FOOD_ICONS = {
+                    "한식": "🍚", "양식": "🍝", "중식": "🥢", "일식": "🍣",
+                    "카페": "☕", "디저트": "🍰", "분식": "🍢",
+                    "해산물": "🦞", "퓨전": "🍽️", "기타": "🍴",
+                }
+                PRICE_ICONS = {"저렴": "💵", "보통": "💵💵", "고급": "💵💵💵"}
+                RATING_ICONS = {"매우높음": "⭐⭐⭐", "높음": "⭐⭐", "보통": "⭐"}
+
+                for idx, food in enumerate(food_recs):
+                    food_icon = FOOD_ICONS.get(food.get("category", ""), "🍴")
+                    price = PRICE_ICONS.get(food.get("price_range", ""), "")
+                    rating = RATING_ICONS.get(food.get("rating", ""), "")
+
+                    st.markdown(
+                        f"""
+                        <div style="padding:14px; border:1px solid #444;
+                                    border-radius:10px; margin-bottom:10px;
+                                    background-color: rgba(255,140,0,0.05);">
+                            <div style="font-size:19px; font-weight:bold;">
+                                {food_icon} {food['name']}
+                            </div>
+                            <div style="font-size:13px; color:#aaa; margin:4px 0;">
+                                🏷️ {food.get('category', '')} | {price} | {rating}
+                            </div>
+                            <div style="font-size:14px; margin:8px 0;">
+                                {food.get('description', '')}
+                            </div>
+                            <div style="font-size:13px; color:#FF8C00;">
+                                💡 {food.get('reason', '')}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                    # 사진 표시 (Wikipedia/Wikimedia)
+                    img_cache_key = f"_food_img_{idx}_{food_key}"
+                    if img_cache_key not in st.session_state:
+                        with st.spinner(f"'{food['name']}' 사진 검색 중..."):
+                            query = food.get("image_query", food["name"])
+                            img_url = fetch_place_image(query)
+                        st.session_state[img_cache_key] = img_url
+
+                    img_url = st.session_state[img_cache_key]
+                    if img_url:
+                        st.image(img_url, caption=food["name"], use_container_width=True)
+
+                    st.divider()
+            else:
+                st.info("주변 맛집을 찾지 못했습니다. 다른 장소를 시도해보세요.")
 
     # ── 🗺️ 지도 앨범 탭 ──
     with tab_map:

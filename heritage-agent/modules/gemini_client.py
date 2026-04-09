@@ -240,3 +240,68 @@ def fetch_place_image(query):
         return None
     except Exception:
         return None
+
+
+def recommend_nearby_food(place_name, place_location, lat, lng, persona_prompt):
+    """현재 장소 주변의 맛집/액티비티를 페르소나에 맞게 추천한다.
+
+    Returns:
+        list of {"name", "category", "description", "reason",
+                 "price_range", "rating", "image_query"}
+    """
+    coord_info = ""
+    if lat and lng:
+        coord_info = f"현재 위치 좌표: 위도 {lat:.4f}, 경도 {lng:.4f}\n"
+
+    prompt = (
+        f"사용자가 지금 '{place_name}' ({place_location})을(를) 방문하고 있어.\n"
+        f"{coord_info}\n"
+        f"{persona_prompt}\n\n"
+        "이 장소 근처에서 이 사용자가 좋아할 만한 맛집이나 카페를 3개 추천해줘.\n"
+        "리뷰가 많고 방문자 수가 많은 인기 있는 곳 위주로 추천해줘.\n"
+        "해당 지역의 실제로 유명한 식당/카페를 추천해야 해.\n\n"
+        "반드시 아래 형식으로만 답해줘 (다른 말 하지 마).\n"
+        "각 추천을 ---로 구분해줘:\n\n"
+        "이름: [식당/카페 이름]\n"
+        "분류: [한식, 양식, 중식, 일식, 카페, 디저트, 분식, 해산물, 퓨전, 기타 중 택1]\n"
+        "설명: [이 곳의 대표 메뉴와 분위기를 2~3문장으로 소개]\n"
+        "추천이유: [이 사용자에게 특별히 추천하는 이유 1문장]\n"
+        "가격대: [저렴, 보통, 고급 중 택1]\n"
+        "인기도: [매우높음, 높음, 보통 중 택1]\n"
+        "검색어: [이 식당의 사진을 찾기 위한 영문 검색어]\n"
+        "---"
+    )
+    try:
+        model = genai.GenerativeModel(MODEL_NAME)
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+
+        places = []
+        blocks = text.split("---")
+        for block in blocks:
+            block = block.strip()
+            if not block:
+                continue
+            place = {}
+            for line in block.split("\n"):
+                line = line.strip()
+                if line.startswith("이름:"):
+                    place["name"] = line.replace("이름:", "").strip()
+                elif line.startswith("분류:"):
+                    place["category"] = line.replace("분류:", "").strip()
+                elif line.startswith("설명:"):
+                    place["description"] = line.replace("설명:", "").strip()
+                elif line.startswith("추천이유:"):
+                    place["reason"] = line.replace("추천이유:", "").strip()
+                elif line.startswith("가격대:"):
+                    place["price_range"] = line.replace("가격대:", "").strip()
+                elif line.startswith("인기도:"):
+                    place["rating"] = line.replace("인기도:", "").strip()
+                elif line.startswith("검색어:"):
+                    place["image_query"] = line.replace("검색어:", "").strip()
+            if "name" in place:
+                places.append(place)
+
+        return places[:3]
+    except Exception:
+        return []

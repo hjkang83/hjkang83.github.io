@@ -180,28 +180,41 @@ def build_recommendation_context(profile):
     return "\n".join(parts)
 
 
-def build_detail_prompt(profile, place_name, place_location=""):
-    """추천 장소에 대한 상세 설명 프롬프트를 생성한다 (사진 없이)."""
+def build_food_recommendation_context(profile):
+    """맛집 추천 시스템에 전달할 페르소나 특성 문자열을 생성한다."""
     name = profile.get("name", "사용자")
     age = profile.get("age", 25)
+    gender = profile.get("gender", "남성")
     mbti = profile.get("mbti", "")
-    expert_mode = profile.get("expert_mode", False)
 
-    if expert_mode:
-        tone = "학술적이고 전문적인 톤으로 7~10문장"
-    elif age <= 12:
-        tone = "어린이가 이해할 수 있는 쉽고 재미있는 말로 3~4문장"
+    parts = [f"사용자 정보: {name}, {age}세, {gender}"]
+
+    if age <= 12:
+        parts.append("이 사용자는 어린이라서 아이가 먹기 좋고 재미있는 메뉴가 있는 곳을 추천해줘.")
+        parts.append("키즈 메뉴나 달콤한 디저트가 있는 곳이면 좋겠어.")
     elif age <= 18:
-        tone = "청소년에게 흥미롭게 다가갈 수 있는 친근한 톤으로 4~6문장"
+        parts.append("이 사용자는 청소년이라 가성비 좋고 SNS에 올릴 만한 비주얼이 좋은 곳을 추천해줘.")
+    elif age >= 50:
+        parts.append("건강하고 정갈한 음식, 조용한 분위기의 식당을 선호합니다.")
     else:
-        tone = "교양 있고 흥미로운 톤으로 5~7문장"
+        parts.append("맛과 분위기 모두 좋은 곳을 추천해줘.")
 
-    location_info = f" ({place_location})" if place_location else ""
+    if mbti:
+        mbti_upper = mbti.upper()
+        prefs = []
+        if mbti_upper[0:1] == "E":
+            prefs.append("활기차고 분위기 좋은 곳")
+        elif mbti_upper[0:1] == "I":
+            prefs.append("조용하고 프라이빗한 곳")
+        if "S" in mbti_upper:
+            prefs.append("검증된 맛집, 리뷰가 많은 곳")
+        elif "N" in mbti_upper:
+            prefs.append("독특하고 새로운 컨셉의 곳")
+        if "F" in mbti_upper:
+            prefs.append("따뜻한 분위기, 감성적인 인테리어")
+        elif "T" in mbti_upper:
+            prefs.append("맛과 가성비가 확실한 곳")
+        if prefs:
+            parts.append(f"MBTI {mbti} 기반 선호: {', '.join(prefs)}")
 
-    return (
-        f"너는 맞춤형 건축/문화재 가이드야.\n"
-        f"{name}에게 '{place_name}'{location_info}에 대해 설명해줘.\n"
-        f"{tone}으로 설명해줘.\n"
-        f"이 장소의 역사, 건축 양식, 의미, 관련 인물, 방문 팁을 포함해줘.\n"
-        f"한국어로 답변해줘."
-    )
+    return "\n".join(parts)
