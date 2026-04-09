@@ -184,14 +184,14 @@ def recommend_nearby_places(place_name, place_location, lat, lng, persona_prompt
 
 
 def get_place_media(query, location=""):
-    """장소에 대한 네이버 이미지/블로그/지도 검색 URL을 반환한다.
+    """장소 사진 검색 URL과 구글 지도 URL을 반환한다.
 
     Args:
         query: 장소 이름 (한글 또는 영문)
         location: 위치 정보 (예: "서울, 한국") - 지도 검색 정확도 향상용
 
     Returns:
-        {"image_search_url": str, "blog_url": str, "map_url": str}
+        {"image_search_url": str, "map_url": str}
     """
     import urllib.parse
 
@@ -202,9 +202,104 @@ def get_place_media(query, location=""):
 
     return {
         "image_search_url": f"https://search.naver.com/search.naver?where=image&query={q}",
-        "blog_url": f"https://search.naver.com/search.naver?where=post&query={q}",
-        "map_url": f"https://map.naver.com/p/search/{map_q}",
+        "map_url": f"https://www.google.com/maps/search/?api=1&query={map_q}",
     }
+
+
+def _get_youtube_api_key():
+    """Streamlit secrets / 환경변수에서 YouTube API 키를 가져온다."""
+    try:
+        import streamlit as st
+        key = st.secrets.get("YOUTUBE_API_KEY")
+        if key:
+            return key
+    except Exception:
+        pass
+    return os.getenv("YOUTUBE_API_KEY")
+
+
+def fetch_youtube_top_videos(query, max_results=3):
+    """YouTube Data API로 해당 장소 관련 '조회수+좋아요' 상위 동영상 목록을 가져온다.
+
+    Args:
+        query: 검색어 (장소 이름 등)
+        max_results: 최대 반환 개수
+
+    Returns:
+        list of {"video_id", "title", "thumbnail", "view_count", "like_count", "url"}
+        API 키가 없거나 실패하면 빈 리스트.
+    """
+    import urllib.request
+    import urllib.parse
+    import json
+
+    api_key = _get_youtube_api_key()
+    if not api_key:
+        return []
+
+    try:
+        # 1) 검색 API: 조회수 순 정렬로 후보 10개 가져오기
+        search_params = urllib.parse.urlencode({
+            "key": api_key,
+            "q": f"{query} 리뷰",
+            "part": "snippet",
+            "maxResults": 10,
+            "order": "viewCount",
+            "type": "video",
+            "relevanceLanguage": "ko",
+        })
+        search_url = f"https://www.googleapis.com/youtube/v3/search?{search_params}"
+        with urllib.request.urlopen(search_url, timeout=10) as resp:
+            search_data = json.loads(resp.read())
+
+        items = search_data.get("items", [])
+        video_ids = [
+            item["id"]["videoId"]
+            for item in items
+            if item.get("id", {}).get("videoId")
+        ]
+        if not video_ids:
+            return []
+
+        # 2) videos API: 통계(조회수, 좋아요 수) 가져오기
+        stats_params = urllib.parse.urlencode({
+            "key": api_key,
+            "id": ",".join(video_ids),
+            "part": "statistics,snippet",
+        })
+        stats_url = f"https://www.googleapis.com/youtube/v3/videos?{stats_params}"
+        with urllib.request.urlopen(stats_url, timeout=10) as resp:
+            stats_data = json.loads(resp.read())
+
+        videos = []
+        for item in stats_data.get("items", []):
+            stats = item.get("statistics", {})
+            snippet = item.get("snippet", {})
+            thumbnails = snippet.get("thumbnails", {})
+            thumb = (
+                thumbnails.get("medium", {}).get("url")
+                or thumbnails.get("default", {}).get("url")
+                or ""
+            )
+            videos.append({
+                "video_id": item["id"],
+                "title": snippet.get("title", ""),
+                "thumbnail": thumb,
+                "view_count": int(stats.get("viewCount", 0)),
+                "like_count": int(stats.get("likeCount", 0)),
+                "url": f"https://www.youtube.com/watch?v={item['id']}",
+            })
+
+        # 3) 조회수 우선 + 좋아요 보조 기준으로 정렬
+        videos.sort(
+            key=lambda v: (v["view_count"], v["like_count"]),
+            reverse=True,
+        )
+
+        return videos[:max_results]
+    except Exception as e:
+        print(f"[YouTube API Failed] {e}")
+        return []
 
 
 def recommend_nearby_activities(place_name, place_location, lat, lng, persona_prompt):

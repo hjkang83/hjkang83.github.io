@@ -15,7 +15,7 @@ from modules.persona import (
 from modules.gemini_client import (
     generate_explanation, identify_place, recommend_nearby_places,
     recommend_nearby_food, recommend_nearby_activities,
-    get_place_media,
+    get_place_media, fetch_youtube_top_videos,
 )
 from modules.tts import text_to_speech
 from modules.storage import (
@@ -162,6 +162,68 @@ def show_profile_screen():
                 save_profile(profile)
                 st.session_state["active_profile"] = profile
                 st.rerun()
+
+
+def render_place_media(query, location, cache_key):
+    """장소 미디어(사진 검색 + 구글 지도 + YouTube TOP3)를 렌더링한다."""
+    import urllib.parse
+
+    if cache_key not in st.session_state:
+        with st.spinner("사진/리뷰 영상/지도 정보를 찾고 있습니다..."):
+            st.session_state[cache_key] = {
+                "media": get_place_media(query, location),
+                "videos": fetch_youtube_top_videos(
+                    f"{query} {location}".strip() if location else query
+                ),
+            }
+
+    data = st.session_state[cache_key]
+    media = data["media"]
+    videos = data["videos"]
+
+    # 사진 검색 + 구글 지도 버튼
+    col_i, col_m = st.columns(2)
+    with col_i:
+        st.link_button(
+            "📷 사진 검색",
+            media["image_search_url"],
+            use_container_width=True,
+        )
+    with col_m:
+        st.link_button(
+            "🗺️ 구글 지도",
+            media["map_url"],
+            use_container_width=True,
+        )
+
+    # YouTube 인기 리뷰 영상 TOP 3
+    st.markdown("**🎥 인기 리뷰 영상 TOP 3**")
+    if videos:
+        for v in videos:
+            view_str = f"{v['view_count']:,}" if v["view_count"] else "-"
+            like_str = f"{v['like_count']:,}" if v["like_count"] else "-"
+            cols = st.columns([1, 3])
+            with cols[0]:
+                if v["thumbnail"]:
+                    st.image(v["thumbnail"], use_container_width=True)
+            with cols[1]:
+                st.markdown(f"**[{v['title']}]({v['url']})**")
+                st.caption(f"👁️ 조회수 {view_str}  ·  👍 좋아요 {like_str}")
+    else:
+        # API 키 없거나 실패 시 폴백: 조회수순 검색 링크
+        q = urllib.parse.quote(f"{query} 리뷰")
+        fallback_url = (
+            f"https://www.youtube.com/results?search_query={q}&sp=CAMSAhAB"
+        )
+        st.info(
+            "YouTube API 키(`YOUTUBE_API_KEY`)가 설정되지 않아 "
+            "영상 목록을 직접 가져오지 못했습니다."
+        )
+        st.link_button(
+            "🎥 YouTube에서 조회수순 검색",
+            fallback_url,
+            use_container_width=True,
+        )
 
 
 # ── 메인 앱 화면 ──
@@ -371,34 +433,12 @@ def show_main_app():
                             st.subheader(f"{cat_icon} {sel['name']}")
                             st.caption(f"📌 {sel.get('location', '')} | 🏷️ {sel.get('category', '기타')}")
 
-                            # 미디어 (네이버 사진/블로그/지도)
-                            media_cache_key = f"_rec_media_{sel_idx}"
-                            if media_cache_key not in st.session_state:
-                                query = sel.get("name", "")
-                                loc = sel.get("location", "")
-                                st.session_state[media_cache_key] = get_place_media(query, loc)
-
-                            media = st.session_state[media_cache_key]
-
-                            col_i, col_b, col_m = st.columns(3)
-                            with col_i:
-                                st.link_button(
-                                    "📷 사진 검색",
-                                    media["image_search_url"],
-                                    use_container_width=True,
-                                )
-                            with col_b:
-                                st.link_button(
-                                    "📝 블로그 리뷰",
-                                    media["blog_url"],
-                                    use_container_width=True,
-                                )
-                            with col_m:
-                                st.link_button(
-                                    "🗺️ 네이버 지도",
-                                    media["map_url"],
-                                    use_container_width=True,
-                                )
+                            # 미디어 (사진 검색 + 구글 지도 + YouTube TOP3)
+                            render_place_media(
+                                query=sel.get("name", ""),
+                                location=sel.get("location", ""),
+                                cache_key=f"_rec_media_{sel_idx}",
+                            )
 
                             if st.button("🔙 추천 목록으로 돌아가기", use_container_width=True):
                                 st.session_state.pop("_selected_rec", None)
@@ -470,34 +510,12 @@ def show_main_app():
                         unsafe_allow_html=True,
                     )
 
-                    # 미디어 (네이버 사진/블로그/지도)
-                    media_cache_key = f"_food_media_{idx}_{food_key}"
-                    if media_cache_key not in st.session_state:
-                        query = food["name"]
-                        loc = result.get("location", "")
-                        st.session_state[media_cache_key] = get_place_media(query, loc)
-
-                    media = st.session_state[media_cache_key]
-
-                    col_i, col_b, col_m = st.columns(3)
-                    with col_i:
-                        st.link_button(
-                            "📷 사진 검색",
-                            media["image_search_url"],
-                            use_container_width=True,
-                        )
-                    with col_b:
-                        st.link_button(
-                            "📝 블로그 리뷰",
-                            media["blog_url"],
-                            use_container_width=True,
-                        )
-                    with col_m:
-                        st.link_button(
-                            "🗺️ 네이버 지도",
-                            media["map_url"],
-                            use_container_width=True,
-                        )
+                    # 미디어 (사진 검색 + 구글 지도 + YouTube TOP3)
+                    render_place_media(
+                        query=food["name"],
+                        location=result.get("location", ""),
+                        cache_key=f"_food_media_{idx}_{food_key}",
+                    )
 
                     st.divider()
             else:
@@ -568,34 +586,12 @@ def show_main_app():
                         unsafe_allow_html=True,
                     )
 
-                    # 미디어 (네이버 사진/블로그/지도)
-                    media_cache_key = f"_activity_media_{idx}_{activity_key}"
-                    if media_cache_key not in st.session_state:
-                        query = act["name"]
-                        loc = result.get("location", "")
-                        st.session_state[media_cache_key] = get_place_media(query, loc)
-
-                    media = st.session_state[media_cache_key]
-
-                    col_i, col_b, col_m = st.columns(3)
-                    with col_i:
-                        st.link_button(
-                            "📷 사진 검색",
-                            media["image_search_url"],
-                            use_container_width=True,
-                        )
-                    with col_b:
-                        st.link_button(
-                            "📝 블로그 리뷰",
-                            media["blog_url"],
-                            use_container_width=True,
-                        )
-                    with col_m:
-                        st.link_button(
-                            "🗺️ 네이버 지도",
-                            media["map_url"],
-                            use_container_width=True,
-                        )
+                    # 미디어 (사진 검색 + 구글 지도 + YouTube TOP3)
+                    render_place_media(
+                        query=act["name"],
+                        location=result.get("location", ""),
+                        cache_key=f"_activity_media_{idx}_{activity_key}",
+                    )
 
                     st.divider()
             else:

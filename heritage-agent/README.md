@@ -46,10 +46,11 @@
 - 소요시간 및 난이도 표시 (쉬움/보통/활동적)
 - 어린이=놀이공원/동물원, 60대=공원/전망대, MBTI 기반 스타일 매칭
 
-**각 추천마다 공통 미디어 제공 (네이버 기반):**
+**각 추천마다 공통 미디어 제공:**
 - 📷 네이버 이미지 검색 링크
-- 📝 네이버 블로그 리뷰 검색 링크
-- 🗺️ 네이버 지도 위치 링크 (장소 이름 + 지역명 기반 정확한 위치 제공)
+- 🗺️ 구글 지도 위치 링크 (장소 이름 + 지역명 기반 정확한 위치 제공)
+- 🎥 **YouTube 인기 리뷰 영상 TOP 3** — YouTube Data API v3로 조회수+좋아요 순 실제 영상 목록 표시 (썸네일, 제목, 조회수, 좋아요 수, 클릭 시 YouTube로 이동)
+  - `YOUTUBE_API_KEY` 미설정 시 YouTube 조회수순 검색 링크로 폴백
 
 ### 5. 🗺️ 지도 앨범 (프로필별)
 - Folium 기반 전세계 지도에 방문지 마커 표시
@@ -76,7 +77,9 @@
 | TTS | edge-tts (SunHiNeural/InJoonNeural) + gTTS 폴백 |
 | 이미지 처리 | Pillow (EXIF GPS 추출, 리사이즈) |
 | 지도 | Folium + streamlit-folium |
-| 사진/리뷰/위치 | 네이버 검색 + 네이버 지도 (이미지/블로그/지도) |
+| 사진 검색 | 네이버 이미지 검색 |
+| 지도 | 구글 지도 (장소명+지역 쿼리) |
+| 리뷰 영상 | YouTube Data API v3 (조회수순 TOP 3) |
 | 클라우드 저장 | GitHub Gist API (urllib) |
 | 데이터 | JSON + base64 encoded photos |
 
@@ -133,7 +136,7 @@ heritage-agent/
 #### 🎡 액티비티 탭
 - 주변 여행지/액티비티 3곳 (유적지·박물관 제외)
 - 각 카드: 카테고리, 소요시간, 난이도, 설명, 추천이유
-- 📷 사진 검색 / 📝 블로그 리뷰 / 🗺️ 네이버 지도 버튼
+- 📷 사진 검색 / 🗺️ 구글 지도 / 🎥 YouTube 리뷰 영상 TOP 3 (조회수+좋아요 순)
 
 #### 🗺️ 지도 앨범 탭
 - 현재 프로필의 방문지 Folium 지도
@@ -164,10 +167,21 @@ GEMINI_API_KEY=your_key_here
    ```toml
    GEMINI_API_KEY = "AIza..."
 
+   # (선택) YouTube 인기 리뷰 영상 TOP 3 기능 활성화
+   YOUTUBE_API_KEY = "AIza..."
+
    # (선택) 클라우드 데이터 영속성
    GITHUB_TOKEN = "ghp_..."
    GIST_ID = "abc123def456"
    ```
+
+### YouTube API 키 발급 방법
+1. [Google Cloud Console](https://console.cloud.google.com/) 접속 → 프로젝트 생성
+2. **APIs & Services → Library** → "YouTube Data API v3" 검색 후 **Enable**
+3. **APIs & Services → Credentials** → **Create Credentials → API key**
+4. 발급된 키를 Streamlit Secrets의 `YOUTUBE_API_KEY`에 등록
+5. 미설정 시 → YouTube 조회수순 검색 링크로 자동 폴백
+6. 무료 할당량: 일일 10,000 units (1개 장소당 약 101 units 소비 → 세션당 캐시)
 
 ### Gist 기반 영속성 설정 방법
 1. GitHub → Gists → New gist → 빈 파일 생성 후 "Create secret gist"
@@ -213,7 +227,7 @@ GEMINI_API_KEY=your_key_here
 | 대상 | 홍릉/의릉 고정 유적지 | 전세계 모든 건물/랜드마크 |
 | 페르소나 | 3종 (어린이/일반/역사 마니아) | 커스텀 프로필 (나이/성별/MBTI/전문가) |
 | 추천 기능 | 없음 | 유적지 5개 + 맛집 3개 + 여행지/액티비티 3개 (유적지 제외) |
-| 미디어 | 없음 | 네이버 이미지 검색 + 블로그 리뷰 + 네이버 지도 위치 |
+| 미디어 | 없음 | 네이버 이미지 검색 + 구글 지도 + YouTube 리뷰 영상 TOP 3 |
 | 데이터 저장 | 로컬 JSON만 | GitHub Gist 클라우드 + 로컬 이중 저장 |
 | TTS | 단일 음성 | 페르소나별 + 3단계 폴백 |
 | 지도 앨범 | 전체 공유 | 프로필별 분리 |
