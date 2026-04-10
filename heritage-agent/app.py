@@ -300,6 +300,8 @@ def show_main_app():
                 st.session_state["_identify_key"] = upload_key
                 st.session_state["_identify_result"] = ai_result
                 st.session_state.pop("result", None)
+                # 새 사진 업로드 시 이전 장소 강제선택 해제
+                st.session_state.pop("_forced_place_name", None)
             else:
                 ai_result = st.session_state.get("_identify_result")
 
