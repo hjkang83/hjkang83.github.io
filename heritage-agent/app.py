@@ -230,7 +230,11 @@ def render_place_media(query, location, cache_key):
                     st.markdown(f"**[{v['title']}]({v['url']})**")
                     st.caption(f"👁️ 조회수 {view_str}  ·  👍 좋아요 {like_str}")
         elif has_error:
-            st.error(f"⚠️ {videos[0]['error']}")
+            is_quota = videos[0].get("quota_exceeded", False)
+            if is_quota:
+                st.warning("📊 YouTube API 일일 할당량을 초과했습니다. 아래 버튼으로 직접 검색해주세요.")
+            else:
+                st.error(f"⚠️ {videos[0]['error']}")
             st.link_button(
                 "🎥 YouTube 리뷰영상",
                 yt_fallback_url,

@@ -253,12 +253,12 @@ def fetch_youtube_top_videos(query, max_results=3):
     search_query = _clean_search_query(query)
 
     try:
-        # 1) 검색 API: 조회수 순 정렬로 후보 10개 가져오기
+        # 1) 검색 API: 조회수 순 정렬로 후보 5개 가져오기 (quota 절약: 100 units/call)
         search_params = urllib.parse.urlencode({
             "key": api_key,
             "q": search_query,
             "part": "snippet",
-            "maxResults": 10,
+            "maxResults": 5,
             "order": "viewCount",
             "type": "video",
             "relevanceLanguage": "ko",
@@ -315,6 +315,8 @@ def fetch_youtube_top_videos(query, max_results=3):
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         print(f"[YouTube API HTTPError] {e.code}: {body[:300]}")
+        if "quota" in body.lower() or "exceeded" in body.lower():
+            return [{"error": "YouTube API 일일 할당량을 초과했습니다. 내일 자동으로 리셋됩니다.", "quota_exceeded": True}]
         return [{"error": f"YouTube API 오류 ({e.code}): {body[:200]}"}]
     except Exception as e:
         print(f"[YouTube API Failed] {e}")
