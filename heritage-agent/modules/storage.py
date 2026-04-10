@@ -1,8 +1,11 @@
-"""방문 기록 저장/불러오기 모듈 - 글로벌 캐시로 리붓에도 복원 가능."""
+"""방문 기록 저장/불러오기 모듈 - GitHub Gist로 리붓에도 영구 저장."""
 
 import base64
+import hashlib
 import json
 import os
+import urllib.request
+import urllib.error
 from datetime import datetime
 from io import BytesIO
 
@@ -14,6 +17,74 @@ RECORDS_PATH = os.path.join(BASE_DIR, "records.json")
 PROFILES_PATH = os.path.join(BASE_DIR, "profiles.json")
 PHOTOS_DIR = os.path.join(BASE_DIR, "photos")
 
+GIST_FILENAME = "on-go-data.json"
+
+# Premortem #5: AI 응답 캐시 최대 엔트리 (무제한 누적 방지)
+MAX_AI_CACHE_ENTRIES = 200
+
+
+def _get_gist_config():
+    """Streamlit secrets에서 Gist 설정을 가져온다."""
+    try:
+        token = st.secrets.get("GITHUB_TOKEN")
+        gist_id = st.secrets.get("GIST_ID")
+        return token, gist_id
+    except Exception:
+        return None, None
+
+
+def _load_from_gist():
+    """GitHub Gist에서 데이터를 로드한다."""
+    token, gist_id = _get_gist_config()
+    if not token or not gist_id:
+        return None
+    try:
+        req = urllib.request.Request(
+            f"https://api.github.com/gists/{gist_id}",
+            headers={"Authorization": f"token {token}"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+            files = data.get("files", {})
+            if GIST_FILENAME in files:
+                return json.loads(files[GIST_FILENAME]["content"])
+    except Exception as e:
+        print(f"[Gist Load Failed] {e}")
+    return None
+
+
+def _save_to_gist(store):
+    """GitHub Gist에 데이터를 저장한다."""
+    token, gist_id = _get_gist_config()
+    if not token or not gist_id:
+        return False
+    try:
+        content = json.dumps({
+            "records": store["records"],
+            "profiles": store["profiles"],
+            "photos": store["photos"],
+            "ai_cache": store.get("ai_cache", {}),
+        }, ensure_ascii=False)
+
+        body = json.dumps({
+            "files": {GIST_FILENAME: {"content": content}}
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            f"https://api.github.com/gists/{gist_id}",
+            data=body,
+            method="PATCH",
+            headers={
+                "Authorization": f"token {token}",
+                "Content-Type": "application/json",
+            },
+        )
+        urllib.request.urlopen(req, timeout=10)
+        return True
+    except Exception as e:
+        print(f"[Gist Save Failed] {e}")
+        return False
+
 
 def _ensure_dirs():
     os.makedirs(PHOTOS_DIR, exist_ok=True)
@@ -23,33 +94,57 @@ def _ensure_dirs():
 
 @st.cache_resource
 def _get_global_store():
-    """앱 전체에서 공유되는 글로벌 저장소. 리붓 전까지 유지."""
-    return {
+    """앱 전체에서 공유되는 글로벌 저장소. 최초 호출 시 Gist/디스크에서 로드."""
+    store = {
         "records": {"records": []},
         "profiles": {"profiles": []},
-        "photos": {},  # {filename: base64_str}
+        "photos": {},
+        "ai_cache": {},  # Premortem #5: 같은 장소+페르소나 응답 재사용
+        "_gist_loaded": False,
     }
 
+    # 1) Gist 우선 시도 (클라우드 영속성)
+    gist_data = _load_from_gist()
+    if gist_data:
+        store["records"] = gist_data.get("records", {"records": []})
+        store["profiles"] = gist_data.get("profiles", {"profiles": []})
+        store["photos"] = gist_data.get("photos", {})
+        store["ai_cache"] = gist_data.get("ai_cache", {})
+        store["_gist_loaded"] = True
+        return store
 
-def _sync_from_disk():
-    """디스크에 파일이 있으면 글로벌 캐시로 로드."""
-    store = _get_global_store()
-    if os.path.exists(RECORDS_PATH) and not store["records"]["records"]:
+    # 2) 디스크 폴백 (로컬 개발)
+    if os.path.exists(RECORDS_PATH):
         with open(RECORDS_PATH, encoding="utf-8") as f:
             store["records"] = json.load(f)
-    if os.path.exists(PROFILES_PATH) and not store["profiles"]["profiles"]:
+    if os.path.exists(PROFILES_PATH):
         with open(PROFILES_PATH, encoding="utf-8") as f:
             store["profiles"] = json.load(f)
 
+    return store
+
+
+def _sync_from_disk():
+    """이전 호환성을 위해 유지 (no-op)."""
+    _get_global_store()
+
 
 def _save_to_disk():
-    """글로벌 캐시를 디스크에도 백업."""
-    _ensure_dirs()
+    """글로벌 캐시를 Gist(우선) 및 디스크에 백업."""
     store = _get_global_store()
-    with open(RECORDS_PATH, "w", encoding="utf-8") as f:
-        json.dump(store["records"], f, ensure_ascii=False, indent=2)
-    with open(PROFILES_PATH, "w", encoding="utf-8") as f:
-        json.dump(store["profiles"], f, ensure_ascii=False, indent=2)
+
+    # 1) Gist에 저장 시도 (클라우드 영속성)
+    _save_to_gist(store)
+
+    # 2) 디스크에도 저장 (로컬 개발 및 로컬 백업)
+    try:
+        _ensure_dirs()
+        with open(RECORDS_PATH, "w", encoding="utf-8") as f:
+            json.dump(store["records"], f, ensure_ascii=False, indent=2)
+        with open(PROFILES_PATH, "w", encoding="utf-8") as f:
+            json.dump(store["profiles"], f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[Disk Save Failed] {e}")
 
 
 # ── 방문 기록 ──
@@ -111,6 +206,11 @@ def load_all_records():
     return store["records"]["records"]
 
 
+def load_records_by_persona(persona_name):
+    records = load_all_records()
+    return [r for r in records if r.get("persona") == persona_name]
+
+
 def load_records_by_place(place_name):
     records = load_all_records()
     return [r for r in records if r["place_name"] == place_name]
@@ -168,6 +268,7 @@ def export_all_data():
         "records": store["records"],
         "profiles": store["profiles"],
         "photos": store["photos"],
+        "ai_cache": store.get("ai_cache", {}),
     }, ensure_ascii=False, indent=2)
 
 
@@ -180,6 +281,8 @@ def import_all_data(json_str):
         store["records"] = imported["records"]
     if "profiles" in imported:
         store["profiles"] = imported["profiles"]
+    if "ai_cache" in imported:
+        store["ai_cache"] = imported["ai_cache"]
     if "photos" in imported:
         store["photos"] = imported["photos"]
         # 사진 파일도 디스크에 복원
@@ -188,5 +291,46 @@ def import_all_data(json_str):
             path = os.path.join(PHOTOS_DIR, filename)
             with open(path, "wb") as f:
                 f.write(base64.b64decode(b64))
+
+    _save_to_disk()
+
+
+# ── AI 응답 캐시 (Premortem #5: 예산/할당량 절약) ──
+
+def _hash_cache_key(cache_key_str):
+    """긴 캐시 키 문자열을 짧은 해시로 변환한다."""
+    return hashlib.sha1(cache_key_str.encode("utf-8")).hexdigest()[:16]
+
+
+def get_cached_explanation(cache_key_str):
+    """캐시된 Gemini 설명 응답을 반환한다. 없으면 None."""
+    _sync_from_disk()
+    store = _get_global_store()
+    cache = store.get("ai_cache", {})
+    key = _hash_cache_key(cache_key_str)
+    entry = cache.get(key)
+    if entry and isinstance(entry, dict):
+        return entry.get("explanation")
+    return None
+
+
+def save_cached_explanation(cache_key_str, explanation):
+    """Gemini 설명을 캐시에 저장하고 Gist에 동기화한다."""
+    store = _get_global_store()
+    cache = store.setdefault("ai_cache", {})
+    key = _hash_cache_key(cache_key_str)
+    cache[key] = {
+        "explanation": explanation,
+        "saved_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+    # 최대 엔트리 초과 시 오래된 것부터 정리
+    if len(cache) > MAX_AI_CACHE_ENTRIES:
+        sorted_keys = sorted(
+            cache.keys(),
+            key=lambda k: cache[k].get("saved_at", ""),
+        )
+        for old_key in sorted_keys[: len(cache) - MAX_AI_CACHE_ENTRIES]:
+            cache.pop(old_key, None)
 
     _save_to_disk()
