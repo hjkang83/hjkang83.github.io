@@ -26,6 +26,7 @@ from modules.storage import (
 )
 from modules.place_matcher import (
     find_place_by_name, load_reference_text, list_known_place_names,
+    get_related_places,
 )
 from modules.map_album import create_map
 
@@ -366,7 +367,20 @@ def show_main_app():
                     else:
                         with st.spinner("AI가 설명을 준비하고 있습니다..."):
                             explanation = generate_explanation(image, prompt)
-                        save_cached_explanation(cache_key_str, explanation)
+
+                        # ── Premortem #3: API 실패 시 오프라인 폴백 ──
+                        if explanation.startswith("⚠️"):
+                            # 같은 장소의 과거 기록에서 설명 복구 시도
+                            from modules.storage import load_records_by_place
+                            past = load_records_by_place(place_name)
+                            if past:
+                                explanation = past[-1]["ai_explanation"]
+                                st.warning(
+                                    "API 호출에 실패하여 이전에 저장된 설명을 표시합니다."
+                                )
+                            # 복구 못 하면 에러 메시지 그대로 표시
+                        else:
+                            save_cached_explanation(cache_key_str, explanation)
 
                     with st.spinner("음성을 생성하고 있습니다..."):
                         mp3_bytes = text_to_speech(explanation, voice_key)
@@ -412,22 +426,59 @@ def show_main_app():
                     st.divider()
                     location_str = f" ({result['location']})" if result.get("location") else ""
                     st.subheader(f"📍 {result['place_name']}{location_str}")
-                    st.write(result["explanation"])
 
-                    # ── Data Integrity: 참고 자료 출처 표시 (Manifest #1, Premortem #2) ──
-                    if result.get("reference_source"):
-                        st.caption(
-                            f"📚 참고: `{result['reference_source']}` "
-                            f"(공식 발굴/관리 자료 기반)"
-                        )
-                    else:
-                        st.caption(
-                            "📚 공식 참고 자료가 없는 장소입니다. "
-                            "세부 사실은 별도 확인을 권장합니다."
-                        )
-
+                    # ── Manifest #2: 음성을 먼저 (시선은 유적에, 손은 주머니에) ──
                     st.audio(result["mp3_bytes"], format="audio/mp3")
+                    st.caption("🎧 음성을 들으며 유적지를 감상하세요")
+
+                    with st.expander("📝 텍스트로 읽기", expanded=False):
+                        st.write(result["explanation"])
+
+                        # ── Data Integrity: 참고 자료 출처 표시 (Manifest #1, Premortem #2) ──
+                        if result.get("reference_source"):
+                            st.caption(
+                                f"📚 참고: `{result['reference_source']}` "
+                                f"(공식 발굴/관리 자료 기반)"
+                            )
+                        else:
+                            st.caption(
+                                "📚 공식 참고 자료가 없는 장소입니다. "
+                                "세부 사실은 별도 확인을 권장합니다."
+                            )
+
                     st.success("✅ 방문 기록이 저장되었습니다!")
+
+                    # ── Manifest #4: 등록된 연관 장소 우선 표시 ──
+                    related = get_related_places(result["place_name"])
+                    if related:
+                        st.divider()
+                        st.subheader("🔗 연관 장소 (공식 자료 보유)")
+                        st.caption(
+                            "이 장소와 역사적으로 연결된 곳입니다. "
+                            "공식 발굴/관리 자료가 등록되어 있어 정확한 설명을 제공합니다."
+                        )
+                        for rel in related:
+                            ref_text = load_reference_text(rel["data_file"])
+                            preview = ref_text[:80] + "..." if ref_text and len(ref_text) > 80 else (ref_text or "")
+                            st.markdown(
+                                f"""
+                                <div style="padding:12px; border:1px solid #2e7d32;
+                                            border-radius:10px; margin-bottom:8px;
+                                            background-color: rgba(46,125,50,0.05);">
+                                    <div style="font-size:17px; font-weight:bold;">
+                                        📚 {rel['name']}
+                                        <span style="font-size:12px; color:#aaa;"> | 📏 {rel.get('distance', '')}</span>
+                                    </div>
+                                    <div style="font-size:13px; color:#888; margin:4px 0;">
+                                        🏷️ {rel.get('category', '')} | 📄 {rel['data_file']}
+                                    </div>
+                                    <div style="font-size:13px; margin:6px 0;">
+                                        {preview}
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
 
                     # ── 주변 유적지 추천 ──
                     st.divider()
@@ -674,6 +725,7 @@ def show_main_app():
         if my_records:
             st.divider()
             st.subheader(f"📋 {profile['name']}님의 방문 기록")
+            st.caption(f"총 {len(my_records)}곳 방문")
             for rec in sorted(my_records, key=lambda r: r["date"] + r["time"], reverse=True):
                 location_str = f" - {rec.get('location', '')}" if rec.get("location") else ""
                 with st.expander(
@@ -685,6 +737,19 @@ def show_main_app():
                     if os.path.exists(photo_path):
                         st.image(photo_path, use_container_width=True)
                     st.write(rec["ai_explanation"])
+
+                    # ── WhyTree 줄기2: "돌이키며 행복" → TTS 재생 ──
+                    tts_key = f"_map_tts_{rec.get('id', rec['place_name'])}"
+                    if st.button(
+                        "🔊 다시 들어보기",
+                        key=tts_key,
+                        use_container_width=True,
+                    ):
+                        with st.spinner("음성을 생성하고 있습니다..."):
+                            replay_mp3 = text_to_speech(
+                                rec["ai_explanation"], voice_key
+                            )
+                        st.audio(replay_mp3, format="audio/mp3")
         else:
             st.info(f"{profile['name']}님의 방문 기록이 없습니다. 가이드 탭에서 사진을 올려보세요!")
 
