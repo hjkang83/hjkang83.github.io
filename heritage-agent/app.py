@@ -186,6 +186,10 @@ def render_place_media(query, location, cache_key):
     media = data["media"]
     videos = data["videos"]
 
+    # YouTube 결과가 빈 리스트(키 미설정)거나 에러면 캐시 무효화 → 다음 렌더에 재시도
+    if not videos or (videos and len(videos) == 1 and "error" in videos[0]):
+        st.session_state.pop(cache_key, None)
+
     # 사진 검색 + 구글 지도 버튼
     col_i, col_m = st.columns(2)
     with col_i:
