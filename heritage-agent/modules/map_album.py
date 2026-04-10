@@ -100,4 +100,20 @@ def create_map(records):
             icon=folium.Icon(color=color, icon="flag"),
         ).add_to(m)
 
+    # ── Manifest #5: 방문 순서대로 궤적(폴리라인) 표시 ──
+    sorted_records = sorted(
+        [r for r in records if r.get("lat") and r.get("lng")],
+        key=lambda r: r["date"] + r.get("time", "00:00"),
+    )
+    if len(sorted_records) >= 2:
+        trajectory = [(r["lat"], r["lng"]) for r in sorted_records]
+        folium.PolyLine(
+            locations=trajectory,
+            color="#1976D2",
+            weight=3,
+            opacity=0.7,
+            dash_array="8",
+            tooltip="방문 궤적",
+        ).add_to(m)
+
     return m

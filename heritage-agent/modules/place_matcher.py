@@ -33,6 +33,7 @@ def load_places(csv_path=None):
     with open(csv_path, encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
+            related = row.get("related_places", "")
             places.append(
                 {
                     "name": row["name"],
@@ -40,6 +41,9 @@ def load_places(csv_path=None):
                     "lng": float(row["lng"]),
                     "data_file": row["data_file"],
                     "category": row["category"],
+                    "related_places": [
+                        r.strip() for r in related.split(";") if r.strip()
+                    ] if related else [],
                 }
             )
     return places
@@ -117,6 +121,36 @@ def load_reference_text(data_file):
             return f.read().strip()
     except Exception:
         return None
+
+
+def get_related_places(place_name, csv_path=None):
+    """Manifest #4: 등록된 장소의 연관 장소 목록을 반환한다.
+
+    Args:
+        place_name: 현재 장소 이름
+        csv_path: places.csv 경로
+
+    Returns:
+        연관 장소 dict 리스트 (각각 name, lat, lng, data_file, category 포함)
+        또는 빈 리스트
+    """
+    matched = find_place_by_name(place_name, csv_path)
+    if not matched or not matched.get("related_places"):
+        return []
+
+    places = load_places(csv_path)
+    name_to_place = {p["name"]: p for p in places}
+
+    result = []
+    for rel_name in matched["related_places"]:
+        if rel_name in name_to_place:
+            p = dict(name_to_place[rel_name])
+            dist = _haversine(
+                matched["lat"], matched["lng"], p["lat"], p["lng"]
+            )
+            p["distance"] = f"{dist:.0f}m" if dist < 1000 else f"{dist / 1000:.1f}km"
+            result.append(p)
+    return result
 
 
 def list_known_place_names(csv_path=None):
