@@ -229,24 +229,12 @@ def render_place_media(query, location, cache_key):
                 with cols[1]:
                     st.markdown(f"**[{v['title']}]({v['url']})**")
                     st.caption(f"👁️ 조회수 {view_str}  ·  👍 좋아요 {like_str}")
-        elif has_error:
-            is_quota = videos[0].get("quota_exceeded", False)
-            if is_quota:
-                st.warning("📊 YouTube API 일일 할당량을 초과했습니다. 아래 버튼으로 직접 검색해주세요.")
-            else:
-                st.error(f"⚠️ {videos[0]['error']}")
-            st.link_button(
-                "🎥 YouTube 리뷰영상",
-                yt_fallback_url,
-                use_container_width=True,
-            )
         else:
-            st.info(
-                "YouTube API 키(`YOUTUBE_API_KEY`)가 설정되지 않아 "
-                "영상 목록을 직접 가져오지 못했습니다."
-            )
+            # 에러/키미설정/quota 모두 동일하게 폴백 버튼 표시
+            if has_error and videos[0].get("quota_exceeded"):
+                st.warning("📊 YouTube API 일일 할당량을 초과했습니다.")
             st.link_button(
-                "🎥 YouTube 리뷰영상",
+                "🎥 YouTube에서 리뷰영상 검색",
                 yt_fallback_url,
                 use_container_width=True,
             )
