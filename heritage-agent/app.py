@@ -651,7 +651,7 @@ def show_main_app():
                     # 미디어 (사진 검색 + 구글 지도 + YouTube TOP3)
                     render_place_media(
                         query=food["name"],
-                        location=result.get("location", ""),
+                        location=food.get("location", result.get("location", "")),
                         cache_key=f"_food_media_{idx}_{food_key}",
                     )
 
@@ -727,7 +727,7 @@ def show_main_app():
                     # 미디어 (사진 검색 + 구글 지도 + YouTube TOP3)
                     render_place_media(
                         query=act["name"],
-                        location=result.get("location", ""),
+                        location=act.get("location", result.get("location", "")),
                         cache_key=f"_activity_media_{idx}_{activity_key}",
                     )
 

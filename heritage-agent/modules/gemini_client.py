@@ -345,6 +345,7 @@ def recommend_nearby_activities(place_name, place_location, lat, lng, persona_pr
         "반드시 아래 형식으로만 답해줘 (다른 말 하지 마).\n"
         "각 추천을 ---로 구분해줘:\n\n"
         "이름: [여행지/액티비티 이름]\n"
+        "위치: [도시, 국가 형태로 (예: 부여, 대한민국 / Stanford, USA)]\n"
         "분류: [공원, 테마파크, 전망대, 쇼핑, 야경, 테마거리, 투어, 체험, 스파, 공연, 동물원, 수족관, 놀이공원, 기타 중 택1]\n"
         "설명: [이 장소의 특징과 경험을 2~3문장으로 소개]\n"
         "추천이유: [이 사용자에게 특별히 추천하는 이유 1문장]\n"
@@ -369,6 +370,8 @@ def recommend_nearby_activities(place_name, place_location, lat, lng, persona_pr
                 line = line.strip()
                 if line.startswith("이름:"):
                     place["name"] = line.replace("이름:", "").strip()
+                elif line.startswith("위치:"):
+                    place["location"] = line.replace("위치:", "").strip()
                 elif line.startswith("분류:"):
                     place["category"] = line.replace("분류:", "").strip()
                 elif line.startswith("설명:"):
@@ -410,6 +413,7 @@ def recommend_nearby_food(place_name, place_location, lat, lng, persona_prompt):
         "반드시 아래 형식으로만 답해줘 (다른 말 하지 마).\n"
         "각 추천을 ---로 구분해줘:\n\n"
         "이름: [식당/카페 이름]\n"
+        "위치: [도시, 국가 형태로 (예: 부여, 대한민국 / Stanford, USA)]\n"
         "분류: [한식, 양식, 중식, 일식, 카페, 디저트, 분식, 해산물, 퓨전, 기타 중 택1]\n"
         "설명: [이 곳의 대표 메뉴와 분위기를 2~3문장으로 소개]\n"
         "추천이유: [이 사용자에게 특별히 추천하는 이유 1문장]\n"
@@ -434,6 +438,8 @@ def recommend_nearby_food(place_name, place_location, lat, lng, persona_prompt):
                 line = line.strip()
                 if line.startswith("이름:"):
                     place["name"] = line.replace("이름:", "").strip()
+                elif line.startswith("위치:"):
+                    place["location"] = line.replace("위치:", "").strip()
                 elif line.startswith("분류:"):
                     place["category"] = line.replace("분류:", "").strip()
                 elif line.startswith("설명:"):
