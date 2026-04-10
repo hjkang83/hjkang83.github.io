@@ -195,8 +195,9 @@ def get_place_media(query, location=""):
     """
     import urllib.parse
 
-    q = urllib.parse.quote(query)
-    # 지도 검색은 위치까지 포함하면 정확도가 높음
+    # 이미지·지도 모두 location 포함 → 동명이인 장소 구분 (예: "수월옥 부여")
+    image_query = _clean_search_query(f"{query} {location}".strip()) if location else _clean_search_query(query)
+    q = urllib.parse.quote(image_query)
     map_query = f"{query} {location}".strip() if location else query
     map_q = urllib.parse.quote(map_query)
 
