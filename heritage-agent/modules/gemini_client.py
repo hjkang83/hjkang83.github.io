@@ -218,6 +218,16 @@ def _get_youtube_api_key():
     return os.getenv("YOUTUBE_API_KEY")
 
 
+def _clean_search_query(query):
+    """YouTube 검색 정확도를 높이기 위해 괄호 부분을 제거한다.
+
+    예: "부여 왕릉원 (능산리 고분군)" → "부여 왕릉원"
+    """
+    import re
+    cleaned = re.sub(r"\s*[\(\（].*?[\)\）]", "", query)
+    return cleaned.strip()
+
+
 def fetch_youtube_top_videos(query, max_results=3):
     """YouTube Data API로 해당 장소 관련 '조회수+좋아요' 상위 동영상 목록을 가져온다.
 
@@ -237,11 +247,14 @@ def fetch_youtube_top_videos(query, max_results=3):
     if not api_key:
         return []
 
+    # 괄호 부분 제거 (예: "부여 왕릉원 (능산리 고분군)" → "부여 왕릉원")
+    search_query = _clean_search_query(query)
+
     try:
         # 1) 검색 API: 조회수 순 정렬로 후보 10개 가져오기
         search_params = urllib.parse.urlencode({
             "key": api_key,
-            "q": f"{query} 리뷰",
+            "q": search_query,
             "part": "snippet",
             "maxResults": 10,
             "order": "viewCount",

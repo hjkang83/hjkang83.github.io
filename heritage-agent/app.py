@@ -215,8 +215,10 @@ def render_place_media(query, location, cache_key):
                     st.markdown(f"**[{v['title']}]({v['url']})**")
                     st.caption(f"👁️ 조회수 {view_str}  ·  👍 좋아요 {like_str}")
         else:
-            # API 키 없거나 실패 시 폴백: 조회수순 검색 링크
-            q = urllib.parse.quote(f"{query} 리뷰")
+            # API 키 없거나 실패 시 폴백: YouTube 검색 링크
+            import re
+            clean_q = re.sub(r"\s*[\(\（].*?[\)\）]", "", query).strip()
+            q = urllib.parse.quote(clean_q)
             fallback_url = (
                 f"https://www.youtube.com/results?search_query={q}&sp=CAMSAhAB"
             )
@@ -225,7 +227,7 @@ def render_place_media(query, location, cache_key):
                 "영상 목록을 직접 가져오지 못했습니다."
             )
             st.link_button(
-                "🎥 YouTube에서 조회수순 검색",
+                "🎥 YouTube 리뷰영상",
                 fallback_url,
                 use_container_width=True,
             )
