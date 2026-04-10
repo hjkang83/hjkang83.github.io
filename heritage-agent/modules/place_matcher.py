@@ -75,3 +75,54 @@ def find_nearest_place(lat, lng, csv_path=None):
     result = dict(nearest)
     result["distance_m"] = round(min_dist, 1)
     return result
+
+
+def find_place_by_name(name, csv_path=None):
+    """장소 이름(부분 일치)으로 등록된 장소를 찾는다.
+
+    Manifest #1 'Data Integrity' 구현용: 인식된 place_name이 로컬 발굴 자료와
+    매칭되는지 확인하고, 있으면 data_file 경로까지 반환한다.
+
+    Args:
+        name: Gemini가 인식한 장소 이름 (예: "홍릉 정자각")
+        csv_path: places.csv 경로
+
+    Returns:
+        매칭된 장소 dict (data_file 포함) 또는 None
+    """
+    if not name:
+        return None
+    places = load_places(csv_path)
+    normalized = name.strip().replace(" ", "")
+    for place in places:
+        place_normalized = place["name"].replace(" ", "")
+        if normalized == place_normalized or normalized in place_normalized or place_normalized in normalized:
+            return place
+    return None
+
+
+def load_reference_text(data_file):
+    """place dict의 data_file에 해당하는 참고 자료 텍스트를 읽는다.
+
+    Returns:
+        파일 내용 문자열, 또는 파일이 없으면 None
+    """
+    if not data_file:
+        return None
+    path = os.path.join(DATA_DIR, data_file)
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception:
+        return None
+
+
+def list_known_place_names(csv_path=None):
+    """places.csv에 등록된 모든 장소 이름 목록 (드롭다운 폴백용)."""
+    try:
+        places = load_places(csv_path)
+        return [p["name"] for p in places]
+    except Exception:
+        return []

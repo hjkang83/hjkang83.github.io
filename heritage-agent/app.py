@@ -22,6 +22,10 @@ from modules.storage import (
     save_record, load_all_records, load_records_by_persona,
     save_profile, load_all_profiles, delete_profile,
     export_all_data, import_all_data, _get_gist_config,
+    get_cached_explanation, save_cached_explanation,
+)
+from modules.place_matcher import (
+    find_place_by_name, load_reference_text, list_known_place_names,
 )
 from modules.map_album import create_map
 
@@ -196,34 +200,34 @@ def render_place_media(query, location, cache_key):
             use_container_width=True,
         )
 
-    # YouTube 인기 리뷰 영상 TOP 3
-    st.markdown("**🎥 인기 리뷰 영상 TOP 3**")
-    if videos:
-        for v in videos:
-            view_str = f"{v['view_count']:,}" if v["view_count"] else "-"
-            like_str = f"{v['like_count']:,}" if v["like_count"] else "-"
-            cols = st.columns([1, 3])
-            with cols[0]:
-                if v["thumbnail"]:
-                    st.image(v["thumbnail"], use_container_width=True)
-            with cols[1]:
-                st.markdown(f"**[{v['title']}]({v['url']})**")
-                st.caption(f"👁️ 조회수 {view_str}  ·  👍 좋아요 {like_str}")
-    else:
-        # API 키 없거나 실패 시 폴백: 조회수순 검색 링크
-        q = urllib.parse.quote(f"{query} 리뷰")
-        fallback_url = (
-            f"https://www.youtube.com/results?search_query={q}&sp=CAMSAhAB"
-        )
-        st.info(
-            "YouTube API 키(`YOUTUBE_API_KEY`)가 설정되지 않아 "
-            "영상 목록을 직접 가져오지 못했습니다."
-        )
-        st.link_button(
-            "🎥 YouTube에서 조회수순 검색",
-            fallback_url,
-            use_container_width=True,
-        )
+    # YouTube 인기 리뷰 영상 TOP 3 (Manifest #2: 시선은 유적에 → expander로 접어둠)
+    with st.expander("🎥 인기 리뷰 영상 TOP 3"):
+        if videos:
+            for v in videos:
+                view_str = f"{v['view_count']:,}" if v["view_count"] else "-"
+                like_str = f"{v['like_count']:,}" if v["like_count"] else "-"
+                cols = st.columns([1, 3])
+                with cols[0]:
+                    if v["thumbnail"]:
+                        st.image(v["thumbnail"], use_container_width=True)
+                with cols[1]:
+                    st.markdown(f"**[{v['title']}]({v['url']})**")
+                    st.caption(f"👁️ 조회수 {view_str}  ·  👍 좋아요 {like_str}")
+        else:
+            # API 키 없거나 실패 시 폴백: 조회수순 검색 링크
+            q = urllib.parse.quote(f"{query} 리뷰")
+            fallback_url = (
+                f"https://www.youtube.com/results?search_query={q}&sp=CAMSAhAB"
+            )
+            st.info(
+                "YouTube API 키(`YOUTUBE_API_KEY`)가 설정되지 않아 "
+                "영상 목록을 직접 가져오지 못했습니다."
+            )
+            st.link_button(
+                "🎥 YouTube에서 조회수순 검색",
+                fallback_url,
+                use_container_width=True,
+            )
 
 
 # ── 메인 앱 화면 ──
@@ -252,6 +256,7 @@ def show_main_app():
             st.session_state.pop("_food_recommendations", None)
             st.session_state.pop("_activity_key", None)
             st.session_state.pop("_activity_recommendations", None)
+            st.session_state.pop("_forced_place_name", None)
             st.rerun()
 
     tab_guide, tab_food, tab_activity, tab_map = st.tabs([
@@ -303,16 +308,65 @@ def show_main_app():
                 )
                 place_name = st.text_input("장소 이름을 확인하거나 수정하세요", value=ai_result["name"])
             else:
-                st.warning("AI가 장소를 인식하지 못했습니다. 직접 입력해주세요.")
+                st.warning("AI가 장소를 인식하지 못했습니다. 직접 입력하거나 등록된 장소에서 선택해주세요.")
                 place_name = st.text_input("장소 이름을 입력하세요", value="")
+
+            # ── Premortem #4: 등록된 장소에서 직접 선택 폴백 ──
+            # (AI 인식이 틀렸거나 공식 자료가 있는 장소를 명시적으로 고르고 싶을 때)
+            known_names = list_known_place_names()
+            if known_names:
+                with st.expander("📚 등록된 장소에서 선택하기 (공식 자료 있는 장소)"):
+                    picked = st.selectbox(
+                        "자료가 등록된 장소",
+                        options=["(선택 안 함)"] + known_names,
+                        key="_known_place_picker",
+                    )
+                    if picked and picked != "(선택 안 함)":
+                        if st.button(
+                            f"✓ '{picked}'(으)로 장소 이름 설정",
+                            use_container_width=True,
+                        ):
+                            st.session_state["_forced_place_name"] = picked
+                            st.rerun()
+                if st.session_state.get("_forced_place_name"):
+                    place_name = st.session_state["_forced_place_name"]
+                    st.info(f"✓ 선택된 장소: **{place_name}**")
+                    if st.button("↺ 선택 해제", key="_clear_forced"):
+                        st.session_state.pop("_forced_place_name", None)
+                        st.rerun()
 
             if place_name:
                 if st.button("🔍 설명 받기", type="primary", use_container_width=True):
                     place_location = ai_result.get("location", "") if ai_result else ""
-                    prompt = build_prompt(profile, place_name, place_location)
 
-                    with st.spinner("AI가 설명을 준비하고 있습니다..."):
-                        explanation = generate_explanation(image, prompt)
+                    # ── Data Integrity (Manifest #1): 로컬 발굴/관리 자료 조회 ──
+                    matched_place = find_place_by_name(place_name)
+                    reference_text = None
+                    reference_source = None
+                    if matched_place:
+                        reference_text = load_reference_text(matched_place["data_file"])
+                        if reference_text:
+                            reference_source = matched_place["data_file"]
+
+                    prompt = build_prompt(
+                        profile, place_name, place_location,
+                        reference_text=reference_text,
+                    )
+
+                    # ── Premortem #5: 응답 캐싱 (같은 장소+페르소나는 재사용) ──
+                    cache_key_str = (
+                        f"{place_name}|{profile.get('name', '')}|{profile.get('age', '')}"
+                        f"|{profile.get('gender', '')}|{profile.get('mbti', '')}"
+                        f"|{profile.get('expert_mode', False)}"
+                    )
+                    cached = get_cached_explanation(cache_key_str)
+                    if cached:
+                        explanation = cached
+                        st.toast("💾 캐시된 설명을 불러왔습니다.", icon="⚡")
+                    else:
+                        with st.spinner("AI가 설명을 준비하고 있습니다..."):
+                            explanation = generate_explanation(image, prompt)
+                        save_cached_explanation(cache_key_str, explanation)
 
                     with st.spinner("음성을 생성하고 있습니다..."):
                         mp3_bytes = text_to_speech(explanation, voice_key)
@@ -340,6 +394,7 @@ def show_main_app():
                         "explanation": explanation,
                         "mp3_bytes": mp3_bytes,
                         "voice_key": voice_key,
+                        "reference_source": reference_source,
                     }
                     st.session_state["_result_lat"] = lat
                     st.session_state["_result_lng"] = lng
@@ -358,6 +413,19 @@ def show_main_app():
                     location_str = f" ({result['location']})" if result.get("location") else ""
                     st.subheader(f"📍 {result['place_name']}{location_str}")
                     st.write(result["explanation"])
+
+                    # ── Data Integrity: 참고 자료 출처 표시 (Manifest #1, Premortem #2) ──
+                    if result.get("reference_source"):
+                        st.caption(
+                            f"📚 참고: `{result['reference_source']}` "
+                            f"(공식 발굴/관리 자료 기반)"
+                        )
+                    else:
+                        st.caption(
+                            "📚 공식 참고 자료가 없는 장소입니다. "
+                            "세부 사실은 별도 확인을 권장합니다."
+                        )
+
                     st.audio(result["mp3_bytes"], format="audio/mp3")
                     st.success("✅ 방문 기록이 저장되었습니다!")
 

@@ -28,13 +28,17 @@ def get_voice_key(profile):
         return "adult_female"
 
 
-def build_prompt(profile, place_name, place_location=""):
+def build_prompt(profile, place_name, place_location="", reference_text=None):
     """사용자 프로필 정보를 기반으로 Gemini 프롬프트를 생성한다.
+
+    Manifest #1 'Data Integrity' 구현: reference_text가 주어지면 공인 자료 기반으로
+    답변하도록 지시하고, 없으면 확신 없는 내용은 솔직하게 밝히도록 안전장치를 건다.
 
     Args:
         profile: {"name": str, "age": int, "gender": str, "mbti": str, "expert_mode": bool}
         place_name: 인식된 건물/장소 이름
         place_location: 위치 정보 (도시, 국가)
+        reference_text: 로컬 발굴/관리 보고서 발췌 (있으면 프롬프트에 주입)
 
     Returns:
         완성된 프롬프트 문자열
@@ -130,8 +134,35 @@ def build_prompt(profile, place_name, place_location=""):
         f"\n사용자가 보고 있는 장소: {place_name}{location_info}",
         f"\n사용자가 업로드한 사진에 보이는 건물/장소에 대해 설명해주세요.",
         "건물의 역사, 건축 양식, 의미, 관련 인물 등을 포함해서 설명해줘.",
-        "한국어로 답변해줘.",
     ])
+
+    # ── Data Integrity: 참고 자료 주입 (Manifest #1, Premortem #1) ──
+    if reference_text:
+        parts.append(
+            "\n[참고 자료]\n"
+            "아래는 이 장소에 대한 공식 발굴/관리 보고서 발췌입니다. "
+            "이 자료에 근거해서 설명해주세요. "
+            "자료에 명시되지 않은 세부 사실(건립 연도, 인물 일화, 양식 등)은 "
+            "절대 지어내지 마세요.\n"
+            "---\n"
+            f"{reference_text}\n"
+            "---"
+        )
+    else:
+        parts.append(
+            "\n[안전 지시]\n"
+            "이 장소에 대한 공식 참고 자료가 없습니다. "
+            "확실하지 않은 세부 사실(정확한 건립 연도, 설계자, 인물 일화)은 "
+            "'~라고 알려져 있어요' 또는 '전해지는 이야기에 따르면'으로 표현해주세요. "
+            "모르는 부분은 '이 부분은 자료가 부족해서 정확히 말씀드리기 어려워요'라고 "
+            "솔직하게 밝혀주세요."
+        )
+
+    # 여행의 밀도 (Manifest #5): "몰랐을 정보 1개 이상"
+    parts.append(
+        "\n사용자가 몰랐을 법한 흥미로운 사실이나 맥락을 최소 1개 포함해주세요. "
+        "한국어로 답변해줘."
+    )
 
     return "\n".join(parts)
 
