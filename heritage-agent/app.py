@@ -202,33 +202,44 @@ def render_place_media(query, location, cache_key):
         )
 
     # YouTube 인기 리뷰 영상 TOP 3 (Manifest #2: 시선은 유적에 → expander로 접어둠)
+    import re
+    clean_q = re.sub(r"\s*[\(\（].*?[\)\）]", "", query).strip()
+    yt_q = urllib.parse.quote(clean_q)
+    yt_fallback_url = (
+        f"https://www.youtube.com/results?search_query={yt_q}&sp=CAMSAhAB"
+    )
+
     with st.expander("🎥 인기 리뷰 영상 TOP 3"):
-        if videos:
+        # API 호출 에러 감지
+        has_error = videos and len(videos) == 1 and "error" in videos[0]
+        has_videos = videos and not has_error
+
+        if has_videos:
             for v in videos:
-                view_str = f"{v['view_count']:,}" if v["view_count"] else "-"
-                like_str = f"{v['like_count']:,}" if v["like_count"] else "-"
+                view_str = f"{v['view_count']:,}" if v.get("view_count") else "-"
+                like_str = f"{v['like_count']:,}" if v.get("like_count") else "-"
                 cols = st.columns([1, 3])
                 with cols[0]:
-                    if v["thumbnail"]:
+                    if v.get("thumbnail"):
                         st.image(v["thumbnail"], use_container_width=True)
                 with cols[1]:
                     st.markdown(f"**[{v['title']}]({v['url']})**")
                     st.caption(f"👁️ 조회수 {view_str}  ·  👍 좋아요 {like_str}")
-        else:
-            # API 키 없거나 실패 시 폴백: YouTube 검색 링크
-            import re
-            clean_q = re.sub(r"\s*[\(\（].*?[\)\）]", "", query).strip()
-            q = urllib.parse.quote(clean_q)
-            fallback_url = (
-                f"https://www.youtube.com/results?search_query={q}&sp=CAMSAhAB"
+        elif has_error:
+            st.error(f"⚠️ {videos[0]['error']}")
+            st.link_button(
+                "🎥 YouTube 리뷰영상",
+                yt_fallback_url,
+                use_container_width=True,
             )
+        else:
             st.info(
                 "YouTube API 키(`YOUTUBE_API_KEY`)가 설정되지 않아 "
                 "영상 목록을 직접 가져오지 못했습니다."
             )
             st.link_button(
                 "🎥 YouTube 리뷰영상",
-                fallback_url,
+                yt_fallback_url,
                 use_container_width=True,
             )
 

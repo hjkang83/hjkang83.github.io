@@ -237,7 +237,7 @@ def fetch_youtube_top_videos(query, max_results=3):
 
     Returns:
         list of {"video_id", "title", "thumbnail", "view_count", "like_count", "url"}
-        API 키가 없거나 실패하면 빈 리스트.
+        API 키가 없으면 빈 리스트, 호출 실패 시 [{"error": "에러 메시지"}] 반환.
     """
     import urllib.request
     import urllib.parse
@@ -310,9 +310,13 @@ def fetch_youtube_top_videos(query, max_results=3):
         )
 
         return videos[:max_results]
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        print(f"[YouTube API HTTPError] {e.code}: {body[:300]}")
+        return [{"error": f"YouTube API 오류 ({e.code}): {body[:200]}"}]
     except Exception as e:
         print(f"[YouTube API Failed] {e}")
-        return []
+        return [{"error": f"YouTube API 호출 실패: {e}"}]
 
 
 def recommend_nearby_activities(place_name, place_location, lat, lng, persona_prompt):
